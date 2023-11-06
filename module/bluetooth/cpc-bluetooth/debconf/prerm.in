@@ -1,0 +1,4 @@
+#!/bin/sh
+if type "systemctl" > /dev/null; then
+    sudo systemctl stop cpc-bluetooth.service
+fi

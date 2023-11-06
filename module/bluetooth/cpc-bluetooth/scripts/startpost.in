@@ -1,0 +1,13 @@
+#!/bin/bash
+
+main()
+{
+    time sleep 3
+    pgrep hciattach
+    if [ $? -eq 0 ]; then
+        sudo killall -9 hciattach
+    fi
+    sudo hciattach /var/lib/rafael/dev/pts_hci any hci0
+}
+
+main

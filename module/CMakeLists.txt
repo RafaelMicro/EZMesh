@@ -1,0 +1,5 @@
+ext_add_subdirectory_ifdef(CONFIG_CPC cpc)
+ext_add_subdirectory_ifdef(CONFIG_BLUETOOTH bluetooth)
+ext_add_subdirectory_ifdef(CONFIG_BORDER_ROUTER border_router)
+ext_add_subdirectory_ifdef(CONFIG_ZIGBEE_GW_SERVICE zigbee)
+ext_add_subdirectory_ifdef(CONFIG_SUBG_SERVICE subg)

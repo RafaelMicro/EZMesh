@@ -1,0 +1,14 @@
+#!/bin/bash
+
+main()
+{
+    if [[ -L "/var/lib/rafael/dev/pts_hci" ]]; then
+        sudo rm /var/lib/rafael/dev/pts_hci
+    fi
+    pgrep hciattach
+    if [ $? -eq 0 ]; then
+        sudo killall hciattach
+    fi
+}
+
+main

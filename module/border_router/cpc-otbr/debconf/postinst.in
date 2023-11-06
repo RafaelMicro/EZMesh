@@ -1,0 +1,74 @@
+#!/bin/bash
+# postinst script for cpc-otbr
+#
+# see: dh_installdeb(1)
+
+set -e
+
+OTBR_SCRIPTS_DIR=/usr/local/share/otbr/script
+
+configure_otbr_install() {
+    export INFRA_IF_NAME=@OTBR_INFRA_IF_NAME@
+    export RADIO_URL=@OTBR_RADIO_URL@
+
+    export OTBR_MDNS=@OTBR_MDNS@
+    export NAT64_SERVICE=@OTBR_NAT64_SERVICE@
+    
+    export RELEASE=$<BOOL:@CPC_OTBR_RELEASE@>
+    export REFERENCE_DEVICE=$<BOOL:@CPC_OTBR_REFERENCE_DEVICE@>
+
+    export BORDER_ROUTING=$<BOOL:@CPC_OTBR_BORDER_ROUTING@>
+    export BACKBONE_ROUTER=$<BOOL:@CPC_OTBR_BACKBONE_ROUTER@>
+    export NAT64=$<BOOL:@CPC_OTBR_NAT64@>
+    export DNS64=$<BOOL:@CPC_OTBR_DNS64@>
+    export DHCPV6_PD=$<BOOL:@CPC_OTBR_DHCPV6_PD@>
+    export NETWORK_MANAGER=$<BOOL:@CPC_OTBR_NETWORK_MANAGER@>
+    # export WEB_GUI=$<BOOL:@CPC_OTBR_WEB_GUI@>
+    # export REST_API=$<BOOL:@CPC_OTBR_REST_API@>
+}
+
+init_otbr_scripts() {
+    . $OTBR_SCRIPTS_DIR/_initrc
+    . $OTBR_SCRIPTS_DIR/_border_routing
+    . $OTBR_SCRIPTS_DIR/_ipforward
+    . $OTBR_SCRIPTS_DIR/_nat64
+    . $OTBR_SCRIPTS_DIR/_dns64
+    . $OTBR_SCRIPTS_DIR/_dhcpv6_pd
+    . $OTBR_SCRIPTS_DIR/_network_manager
+    . $OTBR_SCRIPTS_DIR/_rt_tables
+    . $OTBR_SCRIPTS_DIR/_swapfile
+    . $OTBR_SCRIPTS_DIR/_sudo_extend
+    . $OTBR_SCRIPTS_DIR/_disable_services
+    . $OTBR_SCRIPTS_DIR/_firewall
+}
+
+install_services() {
+    cd $OTBR_SCRIPTS_DIR/..
+    firewall_install
+    ipforward_install
+    rt_tables_install
+    nat64_install
+    dns64_install
+    network_manager_install
+    dhcpv6_pd_install
+    border_routing_install
+}
+
+setup_config() {
+    cp /usr/local/etc/dbus-1/system.d/otbr-agent.conf \
+       /etc/dbus-1/system.d/otbr-agent.conf
+}
+
+enable_otbr_services() {
+    if type "systemctl" >/dev/null; then
+        systemctl --system daemon-reload || true
+    fi
+}
+
+configure_otbr_install
+init_otbr_scripts
+install_services
+setup_config
+enable_otbr_services
+
+exit 0

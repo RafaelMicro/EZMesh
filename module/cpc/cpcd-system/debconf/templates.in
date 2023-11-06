@@ -1,0 +1,5 @@
+Template: cpcd/serial_port
+Type: string
+Default: /dev/ttyUSB0
+Description: The serial port where CPC RCP is connected.
+ (default: /dev/ttyUSB0)

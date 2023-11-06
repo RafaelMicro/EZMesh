@@ -1,0 +1,12 @@
+[Unit]
+Description=CPC Openthread Border Router (ver @PROJECT_VER@)
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cpc-otbr
+ExecStart=${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR}/otbr/script/server
+
+[Install]
+WantedBy=multi-user.target
+
