@@ -314,14 +314,29 @@ void *pty_to_cpc_func(void *ptr)
         size = read(pty_m, &data_to_cpc[d_len], TO_CPC_BUF_SIZE);
         if (size > 0)
         {
-            if (data_to_cpc[d_len] == 0x0D)
+            printf("w-> %ld\n", size);
+            for (int i = 0; i < size; i++)
             {
-                libcpc_write_ep(endpoint, &data_to_cpc[0], d_len + size, 0);
+                if ((i & 0xF) == 8)
+                {
+                    printf(" -");
+                } else if (!(i & 0xF))
+                {
+                    printf("\n");
+                }
+
+                printf(" %02X", data_to_cpc[i+d_len]);
+            }
+            printf("\n\n");
+
+	    d_len += size;
+
+
+            if (data_to_cpc[d_len-1] == 0x0D)
+            {
+                libcpc_write_ep(endpoint, &data_to_cpc[0], d_len, 0);
                 memset(&data_to_cpc[0], 0, TO_CPC_BUF_SIZE);
                 d_len = 0;
-            } else
-            {
-                d_len += size;
             }
         } else if (has_reset)
         {
