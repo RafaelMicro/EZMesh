@@ -32,7 +32,6 @@
 #include "version.h"
 #include "utility/utils.h"
 #include "utility/sleep.h"
-#include "primary/cpcd/cpcd.h"
 
 //=============================================================================
 //                  Constant Definition
