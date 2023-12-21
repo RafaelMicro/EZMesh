@@ -218,7 +218,7 @@ static void a_send_clear(void *p_data)
 
 static void a_send_image(void *p_data)
 {
-    unsigned char ota_download_request_cmd[384] = {
+    unsigned char ota_download_request_cmd[512] = {
         0xFF, 0xFC, 0xFC, 0xFF, 157,
         0x01, 0x00, 0x00, 0xF0, // Command id
         0x00, 0x00, 0x00,       // ignore
