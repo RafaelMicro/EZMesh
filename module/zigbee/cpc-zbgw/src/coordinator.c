@@ -29,7 +29,7 @@ int FileExist(char *fname)
 
 void Clear_EndDevice_Information()
 {
-    int i;
+    int i,j;
     //---------------------------------
     for(i=0;i<EndDeviceMax;i++)
     {
@@ -37,11 +37,11 @@ void Clear_EndDevice_Information()
         memset(ED[i].MacAddress,0x00,8);  
         //----------------------------   
         ED[i].ShortAddress=0;    
-        ED[i].DeviceId=0;         
-        ED[i].in_cluster_count=0;
+        ED[i].Active=0;         
+        ED[i].ep_counts=0;
 
-        memset(ED[i].clusterID,0x00,sizeof(ED[i].clusterID));
-        memset(ED[i].ep_list,0x00,sizeof(ED[i].ep_list));  
+        for(j=0;j<EndPointMax;j++)
+            memset(&ED[i].ep_list[j], 0x00, sizeof(struct _EndPoint));
     }
     
 }
@@ -216,30 +216,30 @@ char* Transfer_End_Device_Mac(unsigned char* src_mac)
 
 void show_dev_info()
 {
-    int i, j;
-    printf("|      ExtAddr     | Short Addr | Device ID | EP List | Cluster (In) | \r\n");
+    int i, j, k;
+    // printf("|      ExtAddr     | Short Addr | Device ID | EP List | Cluster (In) | \r\n");
 
     for(i=0;i<EndDeviceMax;i++) 
     {
         if(ED[i].Active == 0)
             continue;
-        printf("| %02X%02X%02X%02X%02X%02X%02X%02X | ", ED[i].MacAddress[0], ED[i].MacAddress[1], ED[i].MacAddress[2], ED[i].MacAddress[3],
+        printf("Device %d \r\n", i);
+
+        printf("\t MAC Address :%02X%02X%02X%02X%02X%02X%02X%02X \r\n", ED[i].MacAddress[0], ED[i].MacAddress[1], ED[i].MacAddress[2], ED[i].MacAddress[3],
                                                    ED[i].MacAddress[4], ED[i].MacAddress[5], ED[i].MacAddress[6], ED[i].MacAddress[7]);
-        printf("  0x%04X   |", ED[i].ShortAddress);
-        printf("    %04X   | ", ED[i].DeviceId);
+        printf("\t Short Addr : 0x%04X\r\n", ED[i].ShortAddress);
         for (j = 0; j < ED[i].ep_counts; j++)
         {
-            printf(" %X", ED[i].ep_list[j]);
+            printf("\tEP-%d \r\n",j);
+            printf("\t\t endpoint : %d\r\n", ED[i].ep_list[j].ep);
+            printf("\t\t Device ID : %d\r\n", ED[i].ep_list[j].devidId);
+            printf("\t\t Cluster ID : ");
+            for (k = 0; k < ED[i].ep_list[j].clusterCounts; k++)
+                printf("0x%04X ", ED[i].ep_list[j].clusterID[k]);
+            printf("\r\n");
         }
-        printf(" | ");        
-        for (j = 0; j < ED[i].in_cluster_count; j++)
-        {
-            printf("%X ", ED[i].clusterID[j]);
-        }
+
         printf("\r\n");
-
-        
     }
-
     printf("\r\n");
 }

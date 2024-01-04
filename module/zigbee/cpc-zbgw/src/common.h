@@ -16,18 +16,27 @@
 #define WHITE            "\033[1;37m" 
 //======================================================================== 
 #define EndDeviceMax              250
+#define EndPointMax               10
+#define ClusterIDMax              30
+
 extern char Write_ED_Table_flag;
+
+struct _EndPoint
+{
+    unsigned char ep;
+    unsigned short devidId;
+    unsigned short clusterCounts;
+    unsigned short clusterID[ClusterIDMax];
+};
 
 struct _EndDevice
 {
     unsigned char  MacAddress[8];   //Mac Address(64bits)
     unsigned char  Active;	
     unsigned short ShortAddress;    //Short Address(16bits)
-    unsigned short DeviceId;
-    unsigned short in_cluster_count;
-    unsigned short clusterID[30];
     unsigned char ep_counts;
-    unsigned char ep_list[10];    
+    struct _EndPoint ep_list[EndPointMax];
+    
 };
 
 struct _Coordinator

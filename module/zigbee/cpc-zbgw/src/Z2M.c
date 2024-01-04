@@ -95,20 +95,16 @@ static void Z2M_AEP(uint8_t *da, uint16_t len)
                 if(ED[ED_Index].ShortAddress == Shor_Address)
                 {
                     ED[ED_Index].ep_counts = EP_Count;
-
-
                     for(int i =0;i<EP_Count;i++)
                     {
-                        ED[ED_Index].ep_list[i] =  da[4 + i];
+                        ED[ED_Index].ep_list[i].ep =  da[4 + i];
                         if( da[4 + i] > 0 &&  da[4 + i] < 10)
-                            gw_cmd_simple_desc_req(Shor_Address, ED[ED_Index].ep_list[i]);
+                            gw_cmd_simple_desc_req(Shor_Address, ED[ED_Index].ep_list[i].ep);
                     }
                 }
             }
         }
-        
     }
-
 }
 
 static void Z2M_AN(uint8_t *da, uint16_t len)
@@ -162,7 +158,7 @@ static void Z2M_AN(uint8_t *da, uint16_t len)
 
 void Z2M_SD(uint8_t *da, uint16_t len)
 {
-    unsigned short j;
+    unsigned short i, j;
     int            ED_Index=ED_NO_INDEX;
     unsigned short Shor_Address;
     int updated = 0;
@@ -178,14 +174,19 @@ void Z2M_SD(uint8_t *da, uint16_t len)
     {
         if(ED[ED_Index].ShortAddress == pt_idc->nwkAddr)
         {
-            ED[ED_Index].in_cluster_count = pt_idc->in_cluster_count;
-            ED[ED_Index].DeviceId = pt_idc->deviceID;
-
-            for(j = 0; j<pt_idc->in_cluster_count; j++ )
+            for(i=0;i<ED[ED_Index].ep_counts;i++)
             {
-                ED[ED_Index].clusterID[j] = pt_idc->clusterID[j];
-            }
+                if(ED[ED_Index].ep_list[i].ep != pt_idc->endpoint)
+                    continue;
+                ED[ED_Index].ep_list[i].clusterCounts = pt_idc->in_cluster_count;
+                ED[ED_Index].ep_list[i].devidId = pt_idc->deviceID;
 
+                for(j = 0; j<pt_idc->in_cluster_count; j++ )
+                {
+                    ED[ED_Index].ep_list[i].clusterID[j] = pt_idc->clusterID[j];
+                }
+
+            }
             Write_ED_Table_flag = 1;
             break;
         }
