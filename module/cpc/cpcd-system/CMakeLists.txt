@@ -8,10 +8,26 @@ target_link_libraries(cpc-upgrade
   pthread
 )
 
+add_executable(cpc-zbbackup
+  src/zbbackup/cpc-zbbackup.c
+  src/zbbackup/fsm.c
+  )
+
+target_link_libraries(cpc-zbbackup
+  cpc
+  util
+  pthread
+)
+
+
 get_target_property(CPC_SOURCE_DIR cpc SOURCE_DIR)
 target_include_directories(cpc-upgrade PRIVATE 
   ${CPC_SOURCE_DIR}/lib
   src/upgrade/include)
+
+target_include_directories(cpc-zbbackup PRIVATE 
+  ${CPC_SOURCE_DIR}/lib
+  src/zbbackup/include)  
 
 install(TARGETS cpc-upgrade RUNTIME DESTINATION "bin" COMPONENT cpc-upgrade)
 
