@@ -113,7 +113,8 @@ void* Task_System(void* arg)
 	    	Write_ED_Table_flag = false;
 	    	Write_EndDevice_File(); //save to EndDevice_File	    	
 		}
-	  }  
+	}
+	usleep(1000000);
     }   
     printf("[Task_System] close .... \n");
 }
