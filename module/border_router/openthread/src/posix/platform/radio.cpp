@@ -55,10 +55,10 @@ static ot::Spinel::RadioSpinel<ot::Posix::SpiInterface> sRadioSpinel;
 #include "vendor_interface.hpp"
 
 static ot::Spinel::RadioSpinel<ot::Posix::VendorInterface> sRadioSpinel;
-#elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
-#include "cpc_interface.hpp"
+#elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_EZMESH
+#include "ezmesh_interface.hpp"
 
-static ot::Spinel::RadioSpinel<ot::Posix::CpcInterface> sRadioSpinel;
+static ot::Spinel::RadioSpinel<ot::Posix::Ezmesh> sRadioSpinel;
 #else
 #error "OPENTHREAD_POSIX_CONFIG_RCP_BUS only allows OT_POSIX_RCP_BUS_UART, OT_POSIX_RCP_BUS_SPI and " \
     "OT_POSIX_RCP_BUS_VENDOR!"

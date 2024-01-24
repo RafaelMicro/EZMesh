@@ -1,0 +1,5 @@
+
+ext_add_subdirectory_ifdef(CONFIG_CONTROLLER controller)
+ext_add_subdirectory_ifdef(CONFIG_BLUETOOTH bluetooth)
+ext_add_subdirectory_ifdef(CONFIG_BORDER_ROUTER border_router)
+

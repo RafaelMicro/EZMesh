@@ -1,0 +1,57 @@
+#!/bin/sh -e
+#
+# preinstall script to convert rafael.cfg args to debconf input
+
+. /usr/share/debconf/confmodule
+
+RAFAEL_VAR_DIR="${CPACK_PACKAGING_INSTALL_PREFIX}/var/lib/rafael/"
+RAFAEL_CONFFILE=$conffiles/rafael.cfg
+
+if [ -e $RAFAEL_CONFFILE ]; then
+  while IFS= read line #Read IFS https://en.wikipedia.org/wiki/Input_Field_Separators
+  do
+    # Set the state depending on the line read from the config file
+    case "$line" in
+      "ezmesh:" )   # State: ezmesh
+        state="ezmesh"
+        ;;
+      " "* | "-"* )   # Lines starting with '-' or ' ' don't trigger state change.
+        # Do nothing.
+        ;;
+      *) state="" ;;    # Set state to empty, Any unknown text, that doesn't begin with '-' or ' '
+    esac
+    # STM to update entries under 'ezmesh:'
+    case $state in
+      "ezmesh" )
+        case "$line" in
+        *"serial:"*)
+          echo "$line" ;;
+        *)
+          ;;                 # Anything else inside ezmesh we skip 
+        esac ;;
+      *)
+        ;;
+    esac
+  done < "$RAFAEL_CONFFILE" > "$RAFAEL_CONFFILE.sh.tmp"
+
+  # Replace : With =", append " to each line, Remove all spaces,
+  # Remove - in the beginning of the line
+  # Remove lines having "",
+  # Rename serial to ezmesh_serial to coexist with zpc and/or zipgc
+  sed -e 's/:/="/g;s/$/"/g;s/ //g;s/^-//g;/""/d;s/serial/ezmesh_serial/g' $RAFAEL_CONFFILE.sh.tmp > $RAFAEL_CONFFILE.sh
+
+  echo "Existing config options"
+  cat $RAFAEL_CONFFILE.sh
+  #Source the file to set $ezmesh_serial
+  . $RAFAEL_CONFFILE.sh || true
+  rm $RAFAEL_CONFFILE.sh $RAFAEL_CONFFILE.sh.tmp
+
+  #Preload debconf with what was in the conf file
+  if [ ! -z "$ezmesh_serial" ]; then
+    db_set ezmesh/serial_port "$ezmesh_serial"
+  fi
+fi
+
+
+db_input critical ezmesh/serial_port || true
+db_go

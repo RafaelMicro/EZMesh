@@ -1,13 +1,11 @@
-cmake_minimum_required(VERSION 3.21)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+cmake_minimum_required(VERSION 3.10)
 include(project.conf)
-
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
 include(extension)
+include(banner)
+include(default)
 include(project)
-set(PROJECT_VER "")
-get_git_hash(PROJECT_VER)
-message("Current project git information: ${PROJECT_VER}")
 
-project(RAFAEL_HOST_SDK LANGUAGES C CXX)
-add_subdirectory(module)
+ext_add_subdirectory(module)
+ext_add_subdirectory_ifdef(CONFIG_GEN_SYSTEM integrate)

@@ -83,7 +83,7 @@ main()
     OTBR_MDNS=mDNSResponder
 
 
-    OTBR_OPTIONS="-DOT_MULTIPAN_RCP=ON -DOT_POSIX_CONFIG_RCP_BUS=CPC -DCPCD_SOURCE_DIR=${gsdk_dir}/platform/service/cpc/daemon"
+    OTBR_OPTIONS="-DOT_MULTIPAN_RCP=ON -DOT_POSIX_CONFIG_RCP_BUS=EZMESH"
 
     # Create builddir
     builddir="${OTBR_BUILD_DIR:-${OTBR_TOP_BUILD_DIR}}"

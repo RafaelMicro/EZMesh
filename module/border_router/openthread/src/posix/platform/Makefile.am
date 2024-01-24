@@ -83,14 +83,14 @@ noinst_HEADERS                            = \
     radio_url.hpp                           \
     $(NULL)
 
-if OPENTHREAD_ENABLE_CPC
+if OPENTHREAD_ENABLE_EZHESH
 libopenthread_posix_a_CPPFLAGS                                += \
-    -I${top_srcdir}/../../../platform/service/cpc/daemon/lib    \
-    -I${top_srcdir}/../../../platform/service/cpc/daemon/misc   \
+    -I${top_srcdir}/../../../platform/service/ezmesh/daemon/lib    \
+    -I${top_srcdir}/../../../platform/service/ezmesh/daemon/misc   \
     $(NULL)
 
-libopenthread_posix_a_SOURCES += cpc_interface.cpp
-noinst_HEADERS += cpc_interface.hpp
+libopenthread_posix_a_SOURCES += ezmesh_interface.cpp
+noinst_HEADERS += ezmesh_interface.hpp
 endif
 
 openthread_HEADERS                        = \

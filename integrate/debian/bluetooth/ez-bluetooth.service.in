@@ -1,0 +1,16 @@
+[Unit]
+Description=EZMESH BT Bridge service (ver @PROJECT_VER@)
+
+
+[Service]
+WorkingDirectory=/var/lib/rafael/dev
+ExecStartPre=${EZMESH_BLUETOOTH_SERVICE_PATH}/ez_bt_kill
+ExecStart=${EZMESH_BLUETOOTH_SERVICE_PATH}/ez-bluetooth
+ExecStartPost=${EZMESH_BLUETOOTH_SERVICE_PATH}/ez_bt_attach
+ExecStopPost=${EZMESH_BLUETOOTH_SERVICE_PATH}/ez_bt_kill
+# Restart=on-failure
+KillMode=process
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

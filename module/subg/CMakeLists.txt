@@ -1,1 +1,21 @@
-ext_add_subdirectory(cpc-subg)
+add_executable(ezmesh-subg main.c)
+target_link_libraries(ezmesh-subg ezmesh util pthread)
+
+get_target_property(EZMESH_SOURCE_DIR ezmesh SOURCE_DIR)
+target_include_directories(ezmesh-subg PRIVATE ${EZMESH_SOURCE_DIR}/library)
+
+ext_install( "TARGET_RUNTIME" ezmesh-subg "bin" ezmesh-subg)
+
+# set(DEFAULT_EZMESH_ZBGW_INSTALL_PATH /var/lib/ezmesh-subg)
+# set(DEFAULT_EZMESHD_SERVICE_PATH /lib/systemd/system)
+# if(NOT CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+# 	install(DIRECTORY DESTINATION ${CMAKE_INSTALL_PREFIX}/${DEFAULT_EZMESH_ZBGW_INSTALL_PATH} COMPONENT ezmesh-subg)
+#   set(EZMESHD_SERVICE_PATH ${CMAKE_INSTALL_PREFIX}/${DEFAULT_EZMESHD_SERVICE_PATH})
+#   set(EZMESH_ZBGW_SERVICE_PATH ${CMAKE_INSTALL_PREFIX}/${DEFAULT_EZMESH_ZBGW_INSTALL_PATH})
+# else()
+# 	install(DIRECTORY DESTINATION ${DEFAULT_EZMESH_ZBGW_INSTALL_PATH} COMPONENT ezmesh-subg)
+#   set(EZMESHD_SERVICE_PATH ${DEFAULT_EZMESHD_SERVICE_PATH})
+#   set(EZMESH_ZBGW_SERVICE_PATH ${DEFAULT_EZMESH_ZBGW_INSTALL_PATH})
+# endif()
+
+# ext_install("EXECUTE" ${CMAKE_CURRENT_BINARY_DIR}/ezmesh-subg ${EZMESH_ZBGW_SERVICE_PATH} ezmesh-subg)

@@ -106,7 +106,7 @@ add_library(openthread-posix
     backbone.cpp
     backtrace.cpp
     config_file.cpp
-    cpc_interface.cpp
+    ezmesh_interface.cpp
     daemon.cpp
     entropy.cpp
     firewall.cpp
@@ -132,6 +132,8 @@ add_library(openthread-posix
     virtual_time.cpp
 )
 
+get_target_property(EZMESH_SOURCE_DIR ezmesh SOURCE_DIR)
+target_include_directories(openthread-posix PRIVATE ${EZMESH_SOURCE_DIR}/library)
 include(vendor.cmake)
 
 target_link_libraries(openthread-posix
@@ -179,33 +181,33 @@ target_include_directories(openthread-posix PRIVATE
         ${PROJECT_SOURCE_DIR}/src/posix/platform/include
 )
 
-if(OT_POSIX_CONFIG_RCP_BUS MATCHES "CPC")
-    if (NOT TARGET cpc)
-        message(WARNING "CPC target is not available.")
-        if (NOT CPCD_SOURCE_DIR)
-            message(FATAL_ERROR "Could not locate CPC daemon sources.\n"
-                                "Please define the CMake variable 'CPCD_SOURCE_DIR'.\n"
-                                "'CPCD_SOURCE_DIR' is an absolute path to the CPC Daemon sources")
+if(OT_POSIX_CONFIG_RCP_BUS MATCHES "EZMESH")
+    if (NOT TARGET ezmesh)
+        message(WARNING "EZMESH target is not available.")
+        if (NOT EZMESHD_SOURCE_DIR)
+            message(FATAL_ERROR "Could not locate EZMESH daemon sources.\n"
+                                "Please define the CMake variable 'EZMESHD_SOURCE_DIR'.\n"
+                                "'EZMESHD_SOURCE_DIR' is an absolute path to the EZMESH Daemon sources")
         endif()
 
-        if (NOT IS_ABSOLUTE ${CPCD_SOURCE_DIR})
-            message(FATAL_ERROR "'CPCD_SOURCE_DIR' must be an absolute path.\nCPCD_SOURCE_DIR=\"${CPCD_SOURCE_DIR}\"")
+        if (NOT IS_ABSOLUTE ${EZMESHD_SOURCE_DIR})
+            message(FATAL_ERROR "'EZMESHD_SOURCE_DIR' must be an absolute path.\nEZMESHD_SOURCE_DIR=\"${EZMESHD_SOURCE_DIR}\"")
         else()
-            message(WARNING "Building cpc library from source...\n"
-                            "    CPCD_SOURCE_DIR = ${CPCD_SOURCE_DIR}")
+            message(WARNING "Building ezmesh library from source...\n"
+                            "    EZMESHD_SOURCE_DIR = ${EZMESHD_SOURCE_DIR}")
         endif()
 
-        # Add cpcd to the build tree
-        add_subdirectory(${CPCD_SOURCE_DIR} ${CPCD_SOURCE_DIR}/build)
+        # Add ezmeshd to the build tree
+        add_subdirectory(${EZMESHD_SOURCE_DIR} ${EZMESHD_SOURCE_DIR}/build)
         target_include_directories(openthread-posix PRIVATE
-            ${CPCD_SOURCE_DIR}/lib
+            ${EZMESHD_SOURCE_DIR}/lib
         )
     endif()
 
-    get_target_property(CPCD_SOURCE_DIR cpc SOURCE_DIR)
-    target_include_directories(openthread-posix PRIVATE ${CPCD_SOURCE_DIR}/lib)
-    target_sources(openthread-posix PRIVATE cpc_interface.cpp)
-    target_link_libraries(openthread-posix PRIVATE cpc)
+    get_target_property(EZMESHD_SOURCE_DIR ezmesh SOURCE_DIR)
+    target_include_directories(openthread-posix PRIVATE ${EZMESHD_SOURCE_DIR}/lib)
+    target_sources(openthread-posix PRIVATE ezmesh_interface.cpp)
+    target_link_libraries(openthread-posix PRIVATE ezmesh)
 
 endif()
 

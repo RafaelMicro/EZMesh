@@ -1,0 +1,33 @@
+#!/bin/bash
+
+die()
+{
+    echo >&2 " *** ERROR:  $*"
+    exit 1
+}
+
+have()
+{
+    command -v "$1" >/dev/null 2>/dev/null
+}
+
+main()
+{
+    echo >&2 "****************************\nEZMESH version: @PROJECT_VER@\n****************************"
+    sudo sysctl --system
+    if have systemctl; then
+        systemctl is-active ez-otbr && sudo systemctl stop ez-otbr
+        systemctl is-active ezmeshd && sudo systemctl stop ezmeshd
+        systemctl is-active ezmeshd || sudo systemctl start ezmeshd || die 'Failed to start ezmeshd!'
+        systemctl is-active ez-otbr || sudo systemctl start ez-otbr || die 'Failed to start ez-otbr!'
+    elif have service; then
+        sudo service ez-otbr status && ( sudo service ez-otbr stop || die 'Failed to stop otbr!' )
+        sudo service ezmeshd status && ( sudo service ezmeshd stop || die 'Failed to stop ezmeshd!' )
+        sudo service ezmeshd status || sudo service ezmeshd start || die 'Failed to start ezmeshd!'
+        sudo service ez-otbr status || sudo service ez-otbr start || die 'Failed to start ez-otbr!'
+    else
+        die 'Unable to find service manager. Try script/console to start in console mode!'
+    fi
+}
+
+main

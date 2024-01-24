@@ -615,28 +615,28 @@ AC_MSG_RESULT(${enable_cli})
 AM_CONDITIONAL([OPENTHREAD_ENABLE_CLI], [test "${enable_cli}" = "yes"])
 
 #
-# CPC
+# EZMESH
 #
 
-AC_MSG_CHECKING([whether use CPC support])
-AC_ARG_ENABLE(cpc,
-    [AS_HELP_STRING([--enable-cpc], [Link CPC @<:@default=no@:>@.])],
+AC_MSG_CHECKING([whether use EZMESH support])
+AC_ARG_ENABLE(ezmesh,
+    [AS_HELP_STRING([--enable-ezmesh], [Link EZMESH @<:@default=no@:>@.])],
     [
         case "${enableval}" in
 
         no|yes)
-            enable_cpc=${enableval}
+            enable_ezmesh=${enableval}
             ;;
 
         *)
-            AC_MSG_ERROR([Invalid value ${enable_cpc} for --enable-cpc])
+            AC_MSG_ERROR([Invalid value ${enable_ezmesh} for --enable-ezmesh])
             ;;
         esac
     ],
-    [enable_cpc=no])
+    [enable_ezmesh=no])
 
-AC_MSG_RESULT(${enable_cpc})
-AM_CONDITIONAL([OPENTHREAD_ENABLE_CPC], [test "${enable_cpc}" = "yes"])
+AC_MSG_RESULT(${enable_ezmesh})
+AM_CONDITIONAL([OPENTHREAD_ENABLE_EZMESH], [test "${enable_ezmesh}" = "yes"])
 
 #
 # NCP Library
@@ -1117,7 +1117,7 @@ AC_MSG_NOTICE([
   OpenThread MTD support                    : ${enable_mtd}
   OpenThread Radio Only support             : ${enable_radio_only}
   OpenThread CLI support                    : ${enable_cli}
-  OpenThread CPC support                    : ${enable_cpc}
+  OpenThread EZMESH support                 : ${enable_ezmesh}
   OpenThread NCP support                    : ${enable_ncp}
   OpenThread NCP Vendor Hook Source         : ${with_ncp_vendor_hook_source}
   OpenThread NCP Spinel Encrypter           : ${with_ncp_spinel_encrypter_libs}

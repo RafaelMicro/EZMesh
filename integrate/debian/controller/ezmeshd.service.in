@@ -1,0 +1,12 @@
+[Unit]
+Description=EZMESH Agent Service (ver @PROJECT_VER@)
+
+[Service]
+ExecStart=${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/ezmeshd -c ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/ez_config.ini
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+KillMode=process
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

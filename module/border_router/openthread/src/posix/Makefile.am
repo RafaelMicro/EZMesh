@@ -60,9 +60,9 @@ LDADD_COMMON                                                           = \
     $(top_builddir)/third_party/tcplp/libtcplp.a                         \
     $(NULL)
 
-if OPENTHREAD_ENABLE_CPC
+if OPENTHREAD_ENABLE_EZMESH
 LDADD_COMMON                                                          += \
-    -lcpc                                                                \
+    -lezmesh                                                                \
     $(NULL)
 endif
 

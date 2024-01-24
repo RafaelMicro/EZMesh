@@ -1,1 +1,2 @@
-ext_add_subdirectory(cpc-zbgw)
+ext_add_subdirectory(ezmesh-zbgw)
+ext_add_subdirectory(ezmesh-zbbackup)

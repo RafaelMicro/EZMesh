@@ -1,0 +1,12 @@
+[Unit]
+Description=EZMESH Management Daemon (ver @PROJECT_VER@)
+After=bluetooth.service otbr-agent.service dbus.service network.target systemd-timesyncd.service hciuart.service serial-getty.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=${CMAKE_INSTALL_PREFIX}/src/scripts/ez-mgmt 
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

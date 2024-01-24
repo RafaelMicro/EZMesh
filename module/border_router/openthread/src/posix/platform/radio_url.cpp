@@ -62,12 +62,12 @@ const char *otSysGetRadioUrlHelpString(void)
     "                                  MISO frame. Max value is 16.\n"                                         \
     "    spi-small-packet=[n]          Specify the smallest packet we can receive in a single transaction.\n"  \
     "                                  (larger packets will require two transactions). Default value is 32.\n"
-#elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_CPC
+#elif OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_EZMESH
 
 #define OT_RADIO_URL_HELP_BUS                                                                        \
-    "    spinel+cpc://cpcd_0?${Parameters} for connecting to cpcd\n"                                 \
+    "    spinel+ezmesh://ezmeshd_0?${Parameters} for connecting to ezmeshd\n"                                 \
     "Parameters:\n"                                                                                  \
-    "    cpc-bus-speed[=speed]         CPC bus speed used for communicating with RCP.\n"
+    "    ezmesh-bus-speed[=speed]         EZMESH bus speed used for communicating with RCP.\n"
 
 
 

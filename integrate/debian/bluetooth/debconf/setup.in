@@ -1,0 +1,53 @@
+#!/bin/sh
+
+set -e
+RAFAEL_VAR_DIR="${CPACK_PACKAGING_INSTALL_PREFIX}/var/lib/rafael/"
+RAFAEL_DEV_DIR="${CPACK_PACKAGING_INSTALL_PREFIX}/var/lib/rafael/dev/"
+
+pre_rm() {
+    if type "systemctl" > /dev/null; then
+        sudo systemctl stop ez-bluetooth.service
+    fi
+
+    if [ "$1" = "purge" -a -e /usr/share/debconf/confmodule ]; then
+    # Source debconf library
+    . /usr/share/debconf/confmodule
+    # Remove my changes to the db
+    db_purge
+    fi
+
+    if type "systemctl" >/dev/null; then
+        systemctl --system daemon-reload || true
+    fi
+}
+
+setup_user() {
+  if ! getent group rafael >/dev/null; then
+    addgroup --quiet --system rafael
+  fi
+
+  if ! getent passwd rafael >/dev/null; then
+    adduser --quiet --system --no-create-home --ingroup rafael --home "$RAFAEL_VAR_DIR" --shell /usr/sbin/nologin rafael
+    usermod -a -G dialout rafael
+  fi
+}
+
+fix_permissions() {
+  mkdir -p $RAFAEL_VAR_DIR
+  chown rafael $RAFAEL_VAR_DIR
+  mkdir -p $RAFAEL_DEV_DIR
+  chown rafael $RAFAEL_DEV_DIR
+}
+
+enable_hci_services() {
+  if type "systemctl" >/dev/null; then
+    systemctl --system daemon-reload || true
+  fi
+}
+
+pre_rm
+setup_user
+fix_permissions
+enable_hci_services
+
+exit 0
