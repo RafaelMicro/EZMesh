@@ -1,0 +1,1 @@
+ext_add_subdirectory_ifdef(CONFIG_TEST_CLIENT client)

@@ -8,4 +8,5 @@ include(default)
 include(project)
 
 ext_add_subdirectory(module)
+ext_add_subdirectory(test)
 ext_add_subdirectory_ifdef(CONFIG_GEN_SYSTEM integrate)
