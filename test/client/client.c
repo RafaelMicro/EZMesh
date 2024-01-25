@@ -165,22 +165,22 @@ int main(int argc, char *argv[])
 
     if(g_ver)
     {
-        printf("Agent app v%s\r\n", p_ezmesh_inst->agent_app_version);
+        printf("Agent's Version: v%s\r\n", p_ezmesh_inst->agent_app_version);
     }
     // Reset ezmesh communication if daemon signals
-    while (run)
-    {
-        if (has_reset)
-        {
-            ret = reset_ezmesh();
-            if (ret < 0)
-            {
-                perror("reset ");
-                exit(EXIT_FAILURE);
-            }
-        }
-        nanosleep((const struct timespec[]){{ 0, EZMESH_RESET_SLEEP_NS } }, NULL);
-    }
+    // while (run)
+    // {
+    //     if (has_reset)
+    //     {
+    //         ret = reset_ezmesh();
+    //         if (ret < 0)
+    //         {
+    //             perror("reset ");
+    //             exit(EXIT_FAILURE);
+    //         }
+    //     }
+    //     nanosleep((const struct timespec[]){{ 0, EZMESH_RESET_SLEEP_NS } }, NULL);
+    // }
 
     return ret;
 }
