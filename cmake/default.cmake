@@ -8,6 +8,7 @@ ext_config_ifndef(CONFIG_SUBG_SERVICE false)
 
 ext_config_ifndef(CONFIG_GEN_SYSTEM false)
 ext_config_ifndef(CONFIG_PLATEFROM "")
+get_platfrom_info(CONFIG_PLATEFROM)
 
 ext_config_ifndef(EZMESHD_VER "1.0.0")
 ext_config_ifndef(EZMESHD_LIB "1")
