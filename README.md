@@ -22,7 +22,7 @@ Recommend Platform:
 ---
 ## Prepare Env
 ```
-$ sudo apt update && sudo apt install git mosquitto libsystemd-dev libprotobuf-dev libdbus-1-dev net-tools curl gcc
+$ sudo apt update && sudo apt install git mosquitto libsystemd-dev libprotobuf-dev protobuf-compiler libdbus-1-dev net-tools curl gcc
 ```
 ---
 ## Project setup and pre-install
