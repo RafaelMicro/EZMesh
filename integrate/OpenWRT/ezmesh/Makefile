@@ -2,16 +2,18 @@
 # See /LICENSE for more information.
 #
 
+
+LOCAL_SOURCE_DIR:=$(abspath $(realpath $(dir $(lastword $(MAKEFILE_LIST))))/../../..)
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ezmesh
 PKG_VERSION:=0.0.0
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
+CMAKE_SOURCE_DIR=$(LOCAL_SOURCE_DIR)
 CMAKE_OPTIONS+= \
 	-DCONFIG_CONTROLLER=true \
 	-DCONFIG_UPGRADE=true \
@@ -28,33 +30,36 @@ CMAKE_OPTIONS+= \
 	-DOTBR_MDNS="avahi" \
 	-DOTBR_OPENWRT=ON \
 	-DOTBR_SRP_ADVERTISING_PROXY=ON \
-	-DOT_FIREWALL=ON \
+	-DOT_FIREWALL=OFF \
 	-DOT_POSIX_SETTINGS_PATH=\"/etc/openthread\" \
 	-DOT_READLINE=OFF \
 	-DOTBR_WEB=OFF \
-	-DOTBR_NAT64=ON \
+	-DOTBR_NAT64=OFF \
 	-DNAT64_SERVICE=\"openthread\"
 
-define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR)
-	cp -fr $(TOPDIR)/package/EZMesh/* $(PKG_BUILD_DIR)
+define Package/ezmesh
+	TITLE:=EZMesh
+	SECTION:=net
+	CATEGORY:=Network
+	DEPENDS:= +libstdcpp +jsoncpp +libjson-c +libubus +libblobmsg-json +libavahi-client +avahi-daemon +iptables-mod-extra +ipset
 endef
 
-define Package/ezmesh
-  TITLE:=EZMesh
-  SECTION:=libs
-  CATEGORY:=Libraries
-  TITLE+=CPP ezmesh
-  DEPENDS:= +libstdcpp +jsoncpp +libjson-c +libubus +libblobmsg-json +libavahi-client +avahi-daemon +iptables-mod-extra +ipset,
+define Package/ezmesh/description
+  Rafale EZMesh.
 endef
 
 define Package/ezmesh/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_DIR) $(1)/usr/include/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/ezmeshd $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/ezmesh-upgrade $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/ez-bluetooth $(1)/usr/bin
+	$(INSTALL_DIR) $(1)/usr/etc
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/etc/ez_config.ini $(1)/usr/etc/
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/otbr-agent $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/ot-ctl $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/usr/lib
-	$(INSTALL_DIR) $(1)/usr/var/
-	$(INSTALL_DIR) $(1)/usr/var/lib/
-	$(INSTALL_DIR) $(1)/usr/etc/
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libezmesh.so.* $(1)/usr/lib/
 endef
 
 

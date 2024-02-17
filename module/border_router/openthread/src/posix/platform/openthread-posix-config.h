@@ -59,7 +59,7 @@
  */
 #ifndef OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME
 #ifdef __linux__
-#define OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME "/run/openthread-%s"
+#define OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME "/tmp/run/openthread-%s"
 #else
 #define OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME "/tmp/openthread-%s"
 #endif

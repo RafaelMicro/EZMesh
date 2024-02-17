@@ -90,6 +90,7 @@ uint32_t startup(void)
     ret = libezmesh_open_ep(lib_handle, &endpoint, EP_BT_RCP, EZMESH_TRANSMIT_WINDOW);
     if (ret < 0)
     {
+    	printf("ret %d\n", ret);
         perror("ezmesh_open_ep ");
         return ret;
     }
