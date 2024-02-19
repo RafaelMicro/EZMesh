@@ -61,7 +61,7 @@ $ mkdir build && cd build && cmake ../ -DOTBR_INFRA_IF_NAME=enp0s3 \
 ```
 **Note: Using -D<Config> on cmake session apply config**
 |Module|Config|Description|Default|example|
-|:---:|:---:|:---:|:---:|:---:|
+|:---:|:---|:---|:---:|:---|
 |Controller|CONFIG_CONTROLLER|Controller feature|**true**|-DCONFIG_CONTROLLER=true|
 |Controller|CONFIG_UPGRADE|Enable controller upgrade|**true**|-DCONFIG_UPGRADE=true|
 |Bluetooth|CONFIG_BLUETOOTH|Bluetooth feature|**false**|-DCONFIG_BLUETOOTH=true|
