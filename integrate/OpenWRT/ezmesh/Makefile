@@ -7,7 +7,7 @@ LOCAL_SOURCE_DIR:=$(abspath $(realpath $(dir $(lastword $(MAKEFILE_LIST))))/../.
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ezmesh
-PKG_VERSION:=0.0.0
+PKG_VERSION:=2.0.0
 
 
 include $(INCLUDE_DIR)/package.mk
@@ -53,6 +53,10 @@ define Package/ezmesh/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/ezmeshd $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/ezmesh-upgrade $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/ez-bluetooth $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/ezmesh-zbgw $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/ezmesh-zbbackup $(1)/usr/bin
+	$(INSTALL_DIR) $(1)/usr/var/lib/ezmesh-zbgw/zbdb
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/var/lib/ezmesh-zbgw/zbdb/sc_enddevice.dat $(1)/usr/var/lib/ezmesh-zbgw/zbdb
 	$(INSTALL_DIR) $(1)/usr/etc
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/etc/ez_config.ini $(1)/usr/etc/
 	$(INSTALL_DIR) $(1)/usr/sbin
