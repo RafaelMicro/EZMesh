@@ -59,7 +59,7 @@ $ ifconfig
 $ mkdir build && cd build && cmake ../ -DOTBR_INFRA_IF_NAME=enp0s3 \
   && sudo make install && sudo ldconfig && cd ..
 ```
-**Note: Using -D<Config> on cmake session apply config**
+**Note: Using -DConfig on cmake session apply config**
 |Module|Config|Description|Default|example|
 |:---:|:---|:---|:---:|:---|
 |Controller|CONFIG_CONTROLLER|Controller feature|**true**|-DCONFIG_CONTROLLER=true|
