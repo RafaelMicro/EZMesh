@@ -56,12 +56,13 @@ $ ifconfig
 ```
 - Build project (example network interface is enp0s3)
 ```
-$ mkdir build && cd build && cmake ../ -DOTBR_INFRA_IF_NAME=enp0s3 \
+$ mkdir build && cd build && cmake ../ -DOTBR_INFRA_IF_NAME=enp0s3 -DCONFIG_GEN_SYSTEM=true \
   && sudo make install && sudo ldconfig && cd ..
 ```
 **Note: Using -DConfig on cmake session apply config**
 |Module|Config|Description|Default|example|
 |:---:|:---|:---|:---:|:---|
+|Platfrom config|CONFIG_GEN_SYSTEM|Generate systemd setup (for Ubuntu or debian)|**false**|-DCONFIG_GEN_SYSTEM=true|
 |Controller|CONFIG_CONTROLLER|Controller feature|**true**|-DCONFIG_CONTROLLER=true|
 |Controller|CONFIG_UPGRADE|Enable controller upgrade|**true**|-DCONFIG_UPGRADE=true|
 |Bluetooth|CONFIG_BLUETOOTH|Bluetooth feature|**false**|-DCONFIG_BLUETOOTH=true|
