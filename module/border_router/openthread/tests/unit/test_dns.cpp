@@ -49,24 +49,25 @@ void TestDnsName(void)
 
     struct TestName
     {
-        const char *   mName;
+        const char    *mName;
         uint16_t       mEncodedLength;
         const uint8_t *mEncodedData;
-        const char **  mLabels;
-        const char *   mExpectedReadName;
+        const char   **mLabels;
+        const char    *mExpectedReadName;
     };
 
-    Instance *   instance;
+    Instance    *instance;
     MessagePool *messagePool;
-    Message *    message;
+    Message     *message;
     uint8_t      buffer[kMaxSize];
     uint16_t     len;
     uint16_t     offset;
     char         label[Dns::Name::kMaxLabelSize];
     uint8_t      labelLength;
     char         name[Dns::Name::kMaxNameSize];
-    const char * subDomain;
-    const char * domain;
+    const char  *subDomain;
+    const char  *domain;
+    const char  *domain2;
 
     static const uint8_t kEncodedName1[] = {7, 'e', 'x', 'a', 'm', 'p', 'l', 'e', 3, 'c', 'o', 'm', 0};
     static const uint8_t kEncodedName2[] = {3, 'f', 'o', 'o', 1, 'a', 2, 'b', 'b', 3, 'e', 'd', 'u', 0};
@@ -209,6 +210,42 @@ void TestDnsName(void)
     subDomain = "my-service._ipps._tcp.default.service.arpa.";
     domain    = "Vice.arpa.";
     VerifyOrQuit(!Dns::Name::IsSubDomainOf(subDomain, domain));
+
+    domain  = "example.com.";
+    domain2 = "example.com.";
+    VerifyOrQuit(Dns::Name::IsSameDomain(domain, domain2));
+
+    domain  = "example.com.";
+    domain2 = "example.com";
+    VerifyOrQuit(Dns::Name::IsSameDomain(domain, domain2));
+
+    domain  = "example.com.";
+    domain2 = "ExAmPlE.cOm";
+    VerifyOrQuit(Dns::Name::IsSameDomain(domain, domain2));
+
+    domain  = "example.com";
+    domain2 = "ExAmPlE.cOm";
+    VerifyOrQuit(Dns::Name::IsSameDomain(domain, domain2));
+
+    domain  = "example.com.";
+    domain2 = "ExAmPlE.cOm.";
+    VerifyOrQuit(Dns::Name::IsSameDomain(domain, domain2));
+
+    domain  = "example.com.";
+    domain2 = "aExAmPlE.cOm.";
+    VerifyOrQuit(!Dns::Name::IsSameDomain(domain, domain2));
+
+    domain  = "example.com.";
+    domain2 = "cOm.";
+    VerifyOrQuit(!Dns::Name::IsSameDomain(domain, domain2));
+
+    domain  = "example.";
+    domain2 = "example.com.";
+    VerifyOrQuit(!Dns::Name::IsSameDomain(domain, domain2));
+
+    domain  = "example.com.";
+    domain2 = ".example.com.";
+    VerifyOrQuit(!Dns::Name::IsSameDomain(domain, domain2));
 
     printf("----------------------------------------------------------------\n");
     printf("Append names, check encoded bytes, parse name and read labels:\n");
@@ -441,13 +478,14 @@ void TestDnsCompressedName(void)
     static const char kExpectedReadName1[] = "F.ISI.ARPA.";
     static const char kExpectedReadName2[] = "FOO.F.ISI.ARPA.";
     static const char kExpectedReadName3[] = "ISI.ARPA.";
+    static const char kExpectedReadName4[] = "Human.Readable.F.ISI.ARPA.";
 
     static const char kBadName[] = "bad.name";
 
-    Instance *   instance;
+    Instance    *instance;
     MessagePool *messagePool;
-    Message *    message;
-    Message *    message2;
+    Message     *message;
+    Message     *message2;
     uint16_t     offset;
     uint16_t     name1Offset;
     uint16_t     name2Offset;
@@ -708,10 +746,12 @@ void TestDnsCompressedName(void)
         VerifyOrQuit(labelLength == strlen(label), "Name::ReadLabel() returned incorrect label length");
     }
 
-    // `ReadName()` for name-4 should fails due to first label containing dot char.
+    // `ReadName()` for name-4 should still succeed since only the first label contains dot char
     offset = name4Offset;
-    VerifyOrQuit(Dns::Name::ReadName(*message, offset, name, sizeof(name)) == kErrorParse,
-                 "Name::ReadName() did not fail with invalid label");
+    SuccessOrQuit(Dns::Name::ReadName(*message, offset, name, sizeof(name)));
+    printf("Read name =\"%s\"\n", name);
+    VerifyOrQuit(strcmp(name, kExpectedReadName4) == 0, "Name::ReadName() did not return expected name");
+    VerifyOrQuit(offset == name4Offset + kName4EncodedSize, "Name::ParseName() returned incorrect offset");
 
     offset = name4Offset;
 
@@ -789,9 +829,9 @@ void TestHeaderAndResourceRecords(void)
     const char    kServiceLabels[]  = "_service._udp";
     const char    kServiceName[]    = "_service._udp.example.com.";
     const char    kInstance1Label[] = "inst1";
-    const char    kInstance2Label[] = "instance2";
+    const char    kInstance2Label[] = "instance.2"; // Instance label includes dot '.' character.
     const char    kInstance1Name[]  = "inst1._service._udp.example.com.";
-    const char    kInstance2Name[]  = "instance2._service._udp.example.com.";
+    const char    kInstance2Name[]  = "instance.2._service._udp.example.com.";
     const char    kHostName[]       = "host.example.com.";
     const uint8_t kTxtData[]        = {9, 'k', 'e', 'y', '=', 'v', 'a', 'l', 'u', 'e', 0};
     const char    kHostAddress[]    = "fd00::abcd:";
@@ -799,9 +839,9 @@ void TestHeaderAndResourceRecords(void)
     const char *kInstanceLabels[] = {kInstance1Label, kInstance2Label};
     const char *kInstanceNames[]  = {kInstance1Name, kInstance2Name};
 
-    Instance *          instance;
-    MessagePool *       messagePool;
-    Message *           message;
+    Instance           *instance;
+    MessagePool        *messagePool;
+    Message            *message;
     Dns::Header         header;
     uint16_t            messageId;
     uint16_t            headerOffset;
@@ -951,16 +991,18 @@ void TestHeaderAndResourceRecords(void)
 
     VerifyOrQuit(offset == answerSectionOffset, "answer section offset is incorrect");
 
-    for (const char *instanceName : kInstanceNames)
+    for (const char *instanceLabel : kInstanceLabels)
     {
         SuccessOrQuit(Dns::Name::CompareName(*message, offset, kServiceName));
         SuccessOrQuit(Dns::ResourceRecord::ReadRecord(*message, offset, ptrRecord));
         VerifyOrQuit(ptrRecord.GetTtl() == kTtl, "Read PTR is incorrect");
 
-        SuccessOrQuit(ptrRecord.ReadPtrName(*message, offset, name, sizeof(name)));
-        VerifyOrQuit(strcmp(name, instanceName) == 0, "Inst1 name is incorrect");
+        SuccessOrQuit(ptrRecord.ReadPtrName(*message, offset, label, sizeof(label), name, sizeof(name)));
+        VerifyOrQuit(strcmp(label, instanceLabel) == 0, "Inst label is incorrect");
+        VerifyOrQuit(strcmp(name, kServiceName) == 0);
 
-        printf("    \"%s\" PTR %u %d \"%s\"\n", kServiceName, ptrRecord.GetTtl(), ptrRecord.GetLength(), name);
+        printf("    \"%s\" PTR %u %d \"%s.%s\"\n", kServiceName, ptrRecord.GetTtl(), ptrRecord.GetLength(), label,
+               name);
     }
 
     VerifyOrQuit(offset == additionalSectionOffset, "offset is incorrect after answer section parse");
@@ -1221,7 +1263,7 @@ void TestDnsTxtEntry(void)
     const uint8_t kInvalidEncodedTxt1[] = {4, 'a', '=', 'b'}; // Incorrect length
 
     // Special encoded txt data with zero strings and string starting
-    // with '=' (missing key) whcih should be skipped over silently.
+    // with '=' (missing key) which should be skipped over silently.
     const uint8_t kSpecialEncodedTxt[] = {0, 0, 3, 'A', '=', 'B', 2, '=', 'C', 3, 'D', '=', 'E', 3, '=', '1', '2'};
 
     const Dns::TxtEntry kTxtEntries[] = {
@@ -1240,9 +1282,9 @@ void TestDnsTxtEntry(void)
         {kEncodedTxt5, sizeof(kEncodedTxt5)}, {kEncodedTxt6, sizeof(kEncodedTxt6)},
         {kEncodedTxt7, sizeof(kEncodedTxt7)}};
 
-    Instance *                     instance;
-    MessagePool *                  messagePool;
-    Message *                      message;
+    Instance                      *instance;
+    MessagePool                   *messagePool;
+    Message                       *message;
     uint8_t                        txtData[kMaxTxtDataSize];
     uint16_t                       txtDataLength;
     uint8_t                        index;

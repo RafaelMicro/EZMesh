@@ -237,31 +237,10 @@ template <> otError Interpreter::Process<Cmd("version")>(Arg aArgs[])
 {
     otError error = OT_ERROR_NONE;
 
-    /**
-     * @cli version
-     * @code
-     * version
-     * OPENTHREAD/gf4f2f04; Jul 1 2016 17:00:09
-     * Done
-     * @endcode
-     * @par api_copy
-     * #otGetVersionString
-     */
     if (aArgs[0].IsEmpty())
     {
         OutputLine("%s", otGetVersionString());
     }
-
-    /**
-     * @cli version api
-     * @code
-     * version api
-     * 28
-     * Done
-     * @endcode
-     * @par
-     * Prints the API version number.
-     */
     else if (aArgs[0] == "api")
     {
         OutputLine("%u", OPENTHREAD_API_VERSION);
@@ -2348,22 +2327,23 @@ template <> otError Interpreter::Process<Cmd("csl")>(Arg aArgs[])
      * @code
      * csl
      * Channel: 11
-     * Period: 160000us
+     * Period: 1000 (in units of 10 symbols), 160ms
      * Timeout: 1000s
      * Done
      * @endcode
      * @par
      * Gets the CSL configuration.
-     * @sa otLinkGetCslChannel
-     * @sa otLinkGetCslPeriod
-     * @sa otLinkGetCslPeriod
-     * @sa otLinkGetCslTimeout
+     * @sa otLinkCslGetChannel
+     * @sa otLinkCslGetPeriod
+     * @sa otLinkCslGetPeriod
+     * @sa otLinkCslGetTimeout
      */
     if (aArgs[0].IsEmpty())
     {
-        OutputLine("Channel: %u", otLinkGetCslChannel(GetInstancePtr()));
-        OutputLine("Period: %luus", ToUlong(otLinkGetCslPeriod(GetInstancePtr())));
-        OutputLine("Timeout: %lus", ToUlong(otLinkGetCslTimeout(GetInstancePtr())));
+        OutputLine("Channel: %u", otLinkCslGetChannel(GetInstancePtr()));
+        OutputLine("Period: %u(in units of 10 symbols), %lums", otLinkCslGetPeriod(GetInstancePtr()),
+                   ToUlong(otLinkCslGetPeriod(GetInstancePtr()) * kUsPerTenSymbols / 1000));
+        OutputLine("Timeout: %lus", ToUlong(otLinkCslGetTimeout(GetInstancePtr())));
     }
     /**
      * @cli csl channel
@@ -2373,25 +2353,25 @@ template <> otError Interpreter::Process<Cmd("csl")>(Arg aArgs[])
      * @endcode
      * @cparam csl channel @ca{channel}
      * @par api_copy
-     * #otLinkSetCslChannel
+     * #otLinkCslSetChannel
      */
     else if (aArgs[0] == "channel")
     {
-        error = ProcessSet(aArgs + 1, otLinkSetCslChannel);
+        error = ProcessSet(aArgs + 1, otLinkCslSetChannel);
     }
     /**
      * @cli csl period
      * @code
-     * csl period 3000000
+     * csl period 3000
      * Done
      * @endcode
      * @cparam csl period @ca{period}
      * @par api_copy
-     * #otLinkSetCslPeriod
+     * #otLinkCslSetPeriod
      */
     else if (aArgs[0] == "period")
     {
-        error = ProcessSet(aArgs + 1, otLinkSetCslPeriod);
+        error = ProcessSet(aArgs + 1, otLinkCslSetPeriod);
     }
     /**
      * @cli csl timeout
@@ -2401,11 +2381,11 @@ template <> otError Interpreter::Process<Cmd("csl")>(Arg aArgs[])
      * @endcode
      * @cparam csl timeout @ca{timeout}
      * @par api_copy
-     * #otLinkSetCslTimeout
+     * #otLinkCslSetTimeout
      */
     else if (aArgs[0] == "timeout")
     {
-        error = ProcessSet(aArgs + 1, otLinkSetCslTimeout);
+        error = ProcessSet(aArgs + 1, otLinkCslSetTimeout);
     }
     else
     {
@@ -2463,57 +2443,23 @@ exit:
 }
 #endif
 
-/**
- * @cli detach
- * @code
- * detach
- * Finished detaching
- * Done
- * @endcode
- * @par
- * Start the graceful detach process by first notifying other nodes (sending Address Release if acting as a router, or
- * setting Child Timeout value to zero on parent if acting as a child) and then stopping Thread protocol operation.
- * @sa otThreadDetachGracefully
- */
 template <> otError Interpreter::Process<Cmd("detach")>(Arg aArgs[])
 {
     otError error = OT_ERROR_NONE;
 
-    /**
-     * @cli detach async
-     * @code
-     * detach async
-     * Done
-     * @endcode
-     * @par
-     * Start the graceful detach process similar to the `detach` command without blocking and waiting for the callback
-     * indicating that detach is finished.
-     * @csa{detach}
-     * @sa otThreadDetachGracefully
-     */
     if (aArgs[0] == "async")
     {
         SuccessOrExit(error = otThreadDetachGracefully(GetInstancePtr(), nullptr, nullptr));
     }
     else
     {
-        SuccessOrExit(error = otThreadDetachGracefully(GetInstancePtr(), HandleDetachGracefullyResult, this));
+        SuccessOrExit(error =
+                          otThreadDetachGracefully(GetInstancePtr(), &Interpreter::HandleDetachGracefullyResult, this));
         error = OT_ERROR_PENDING;
     }
 
 exit:
     return error;
-}
-
-void Interpreter::HandleDetachGracefullyResult(void *aContext)
-{
-    static_cast<Interpreter *>(aContext)->HandleDetachGracefullyResult();
-}
-
-void Interpreter::HandleDetachGracefullyResult(void)
-{
-    OutputLine("Finished detaching");
-    OutputResult(OT_ERROR_NONE);
 }
 
 /**
@@ -3596,7 +3542,7 @@ exit:
 #if OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE
 void Interpreter::HandleLinkMetricsReport(const otIp6Address        *aAddress,
                                           const otLinkMetricsValues *aMetricsValues,
-                                          otLinkMetricsStatus        aStatus,
+                                          uint8_t                    aStatus,
                                           void                      *aContext)
 {
     static_cast<Interpreter *>(aContext)->HandleLinkMetricsReport(aAddress, aMetricsValues, aStatus);
@@ -3629,7 +3575,7 @@ void Interpreter::PrintLinkMetricsValue(const otLinkMetricsValues *aMetricsValue
 
 void Interpreter::HandleLinkMetricsReport(const otIp6Address        *aAddress,
                                           const otLinkMetricsValues *aMetricsValues,
-                                          otLinkMetricsStatus        aStatus)
+                                          uint8_t                    aStatus)
 {
     OutputFormat("Received Link Metrics Report from: ");
     OutputIp6AddressLine(*aAddress);
@@ -3650,14 +3596,12 @@ void Interpreter::HandleLinkMetricsReport(const otIp6Address        *aAddress,
     }
 }
 
-void Interpreter::HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress,
-                                                otLinkMetricsStatus aStatus,
-                                                void               *aContext)
+void Interpreter::HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, uint8_t aStatus, void *aContext)
 {
     static_cast<Interpreter *>(aContext)->HandleLinkMetricsMgmtResponse(aAddress, aStatus);
 }
 
-void Interpreter::HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, otLinkMetricsStatus aStatus)
+void Interpreter::HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, uint8_t aStatus)
 {
     OutputFormat("Received Link Metrics Management Response from: ");
     OutputIp6AddressLine(*aAddress);
@@ -3687,7 +3631,7 @@ void Interpreter::HandleLinkMetricsEnhAckProbingIe(otShortAddress             aS
     }
 }
 
-const char *Interpreter::LinkMetricsStatusToStr(otLinkMetricsStatus aStatus)
+const char *Interpreter::LinkMetricsStatusToStr(uint8_t aStatus)
 {
     static const char *const kStatusStrings[] = {
         "Success",                      // (0) OT_LINK_METRICS_STATUS_SUCCESS
@@ -4157,23 +4101,6 @@ exit:
 }
 #endif
 #endif // OPENTHREAD_FTD
-
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-/**
- * @cli mleadvimax
- * @code
- * mleadvimax
- * 12000
- * Done
- * @endcode
- * @par api_copy
- * #otThreadGetAdvertisementTrickleIntervalMax
- */
-template <> otError Interpreter::Process<Cmd("mleadvimax")>(Arg aArgs[])
-{
-    return ProcessGet(aArgs, otThreadGetAdvertisementTrickleIntervalMax);
-}
-#endif
 
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
 /**
@@ -5091,129 +5018,6 @@ template <> otError Interpreter::Process<Cmd("meshdiag")>(Arg aArgs[])
         SuccessOrExit(error = otMeshDiagDiscoverTopology(GetInstancePtr(), &config, HandleMeshDiagDiscoverDone, this));
         error = OT_ERROR_PENDING;
     }
-    /**
-     * @cli meshdiag childtable
-     * @code
-     * meshdiag childtable 0x6400
-     * rloc16:0x6402 ext-addr:8e6f4d323bbed1fe ver:4
-     *     timeout:120 age:36 supvn:129 q-msg:0
-     *     rx-on:yes type:ftd full-net:yes
-     *     rss - ave:-20 last:-20 margin:80
-     *     err-rate - frame:11.51% msg:0.76%
-     *     conn-time:00:11:07
-     *     csl - sync:no period:0 timeout:0 channel:0
-     * rloc16:0x6403 ext-addr:ee24e64ecf8c079a ver:4
-     *     timeout:120 age:19 supvn:129 q-msg:0
-     *     rx-on:no type:mtd full-net:no
-     *     rss - ave:-20 last:-20  margin:80
-     *     err-rate - frame:0.73% msg:0.00%
-     *     conn-time:01:08:53
-     *     csl - sync:no period:0 timeout:0 channel:0
-     * Done
-     * @endcode
-     * @par
-     * Start a query for child table of a router with a given RLOC16.
-     * Output lists all child entries. Information per child:
-     * - RLOC16
-     * - Extended MAC address
-     * - Thread Version
-     * - Timeout (in seconds)
-     * - Age (seconds since last heard)
-     * - Supervision interval (in seconds)
-     * - Number of queued messages (in case child is sleepy)
-     * - Device Mode
-     * - RSS (average and last)
-     * - Error rates: frame tx (at MAC layer), IPv6 message tx (above MAC)
-     * - Connection time (seconds since link establishment `{dd}d.{hh}:{mm}:{ss}` format)
-     * - CSL info:
-     *   - If synchronized
-     *   - Period (in unit of 10-symbols-time)
-     *   - Timeout (in seconds)
-     *
-     * @cparam meshdiag childtable @ca{router-rloc16}
-     * @sa otMeshDiagQueryChildTable
-     */
-    else if (aArgs[0] == "childtable")
-    {
-        uint16_t routerRloc16;
-
-        SuccessOrExit(error = aArgs[1].ParseAsUint16(routerRloc16));
-        VerifyOrExit(aArgs[2].IsEmpty(), error = OT_ERROR_INVALID_ARGS);
-
-        SuccessOrExit(error = otMeshDiagQueryChildTable(GetInstancePtr(), routerRloc16,
-                                                        HandleMeshDiagQueryChildTableResult, this));
-
-        error = OT_ERROR_PENDING;
-    }
-    /**
-     * @cli meshdiag childip6
-     * @code
-     * meshdiag childip6 0xdc00
-     * child-rloc16: 0xdc02
-     *     fdde:ad00:beef:0:ded8:cd58:b73:2c21
-     *     fd00:2:0:0:c24a:456:3b6b:c597
-     *     fd00:1:0:0:120b:95fe:3ecc:d238
-     * child-rloc16: 0xdc03
-     *     fdde:ad00:beef:0:3aa6:b8bf:e7d6:eefe
-     *     fd00:2:0:0:8ff8:a188:7436:6720
-     *     fd00:1:0:0:1fcf:5495:790a:370f
-     * Done
-     * @endcode
-     * @par
-     * Send a query to a parent to retrieve the IPv6 addresses of all its MTD children.
-     * @cparam meshdiag childip6 @ca{parent-rloc16}
-     * @sa otMeshDiagQueryChildrenIp6Addrs
-     */
-    else if (aArgs[0] == "childip6")
-    {
-        uint16_t parentRloc16;
-
-        SuccessOrExit(error = aArgs[1].ParseAsUint16(parentRloc16));
-        VerifyOrExit(aArgs[2].IsEmpty(), error = OT_ERROR_INVALID_ARGS);
-
-        SuccessOrExit(error = otMeshDiagQueryChildrenIp6Addrs(GetInstancePtr(), parentRloc16,
-                                                              HandleMeshDiagQueryChildIp6Addrs, this));
-
-        error = OT_ERROR_PENDING;
-    }
-    /**
-     * @cli meshdiag routerneighbortable
-     * @code
-     * meshdiag routerneighbortable 0x7400
-     * rloc16:0x9c00 ext-addr:764788cf6e57a4d2 ver:4
-     *    rss - ave:-20 last:-20 margin:80
-     *    err-rate - frame:1.38% msg:0.00%
-     *    conn-time:01:54:02
-     * rloc16:0x7c00 ext-addr:4ed24fceec9bf6d3 ver:4
-     *    rss - ave:-20 last:-20 margin:80
-     *    err-rate - frame:0.72% msg:0.00%
-     *    conn-time:00:11:27
-     * Done
-     * @endcode
-     * @par
-     * Start a query for router neighbor table of a router with a given RLOC16.
-     * Output lists all router neighbor entries. Information per entry:
-     *  - RLOC16
-     *  - Extended MAC address
-     *  - Thread Version
-     *  - RSS (average and last) and link margin
-     *  - Error rates, frame tx (at MAC layer), IPv6 message tx (above MAC)
-     *  - Connection time (seconds since link establishment `{dd}d.{hh}:{mm}:{ss}` format)
-     * @cparam meshdiag routerneighbortable @ca{router-rloc16}
-     * @sa otMeshDiagQueryRouterNeighborTable
-     */
-    else if (aArgs[0] == "routerneighbortable")
-    {
-        uint16_t routerRloc16;
-
-        SuccessOrExit(error = aArgs[1].ParseAsUint16(routerRloc16));
-        VerifyOrExit(aArgs[2].IsEmpty(), error = OT_ERROR_INVALID_ARGS);
-
-        SuccessOrExit(error = otMeshDiagQueryRouterNeighborTable(GetInstancePtr(), routerRloc16,
-                                                                 HandleMeshDiagQueryRouterNeighborTableResult, this));
-
-        error = OT_ERROR_PENDING;
-    }
     else
     {
         error = OT_ERROR_INVALID_COMMAND;
@@ -5279,7 +5083,7 @@ void Interpreter::HandleMeshDiagDiscoverDone(otError aError, otMeshDiagRouterInf
         {
             OutputFormat(kIndentSize, "%u-links:{ ", linkQuality);
 
-            for (uint8_t id = 0; id < static_cast<uint8_t>(OT_ARRAY_LENGTH(aRouterInfo->mLinkQualities)); id++)
+            for (uint8_t id = 0; id < OT_ARRAY_LENGTH(aRouterInfo->mLinkQualities); id++)
             {
                 if (aRouterInfo->mLinkQualities[id] == linkQuality)
                 {
@@ -5338,116 +5142,6 @@ void Interpreter::HandleMeshDiagDiscoverDone(otError aError, otMeshDiagRouterInf
         {
             OutputLine(kIndentSize, "children: none");
         }
-    }
-
-exit:
-    OutputResult(aError);
-}
-
-void Interpreter::HandleMeshDiagQueryChildTableResult(otError                     aError,
-                                                      const otMeshDiagChildEntry *aChildEntry,
-                                                      void                       *aContext)
-{
-    reinterpret_cast<Interpreter *>(aContext)->HandleMeshDiagQueryChildTableResult(aError, aChildEntry);
-}
-
-void Interpreter::HandleMeshDiagQueryChildTableResult(otError aError, const otMeshDiagChildEntry *aChildEntry)
-{
-    PercentageStringBuffer stringBuffer;
-    char                   string[OT_DURATION_STRING_SIZE];
-
-    VerifyOrExit(aChildEntry != nullptr);
-
-    OutputFormat("rloc16:0x%04x ext-addr:", aChildEntry->mRloc16);
-    OutputExtAddress(aChildEntry->mExtAddress);
-    OutputLine(" ver:%u", aChildEntry->mVersion);
-
-    OutputLine(kIndentSize, "timeout:%lu age:%lu supvn:%u q-msg:%u", ToUlong(aChildEntry->mTimeout),
-               ToUlong(aChildEntry->mAge), aChildEntry->mSupervisionInterval, aChildEntry->mQueuedMessageCount);
-
-    OutputLine(kIndentSize, "rx-on:%s type:%s full-net:%s", aChildEntry->mRxOnWhenIdle ? "yes" : "no",
-               aChildEntry->mDeviceTypeFtd ? "ftd" : "mtd", aChildEntry->mFullNetData ? "yes" : "no");
-
-    OutputLine(kIndentSize, "rss - ave:%d last:%d margin:%d", aChildEntry->mAverageRssi, aChildEntry->mLastRssi,
-               aChildEntry->mLinkMargin);
-
-    if (aChildEntry->mSupportsErrRate)
-    {
-        OutputFormat(kIndentSize, "err-rate - frame:%s%% ",
-                     PercentageToString(aChildEntry->mFrameErrorRate, stringBuffer));
-        OutputLine("msg:%s%% ", PercentageToString(aChildEntry->mMessageErrorRate, stringBuffer));
-    }
-
-    otConvertDurationInSecondsToString(aChildEntry->mConnectionTime, string, sizeof(string));
-    OutputLine(kIndentSize, "conn-time:%s", string);
-
-    OutputLine(kIndentSize, "csl - sync:%s period:%u timeout:%lu channel:%u",
-               aChildEntry->mCslSynchronized ? "yes" : "no", aChildEntry->mCslPeriod, ToUlong(aChildEntry->mCslTimeout),
-               aChildEntry->mCslChannel);
-
-exit:
-    OutputResult(aError);
-}
-
-void Interpreter::HandleMeshDiagQueryRouterNeighborTableResult(otError                              aError,
-                                                               const otMeshDiagRouterNeighborEntry *aNeighborEntry,
-                                                               void                                *aContext)
-{
-    reinterpret_cast<Interpreter *>(aContext)->HandleMeshDiagQueryRouterNeighborTableResult(aError, aNeighborEntry);
-}
-
-void Interpreter::HandleMeshDiagQueryRouterNeighborTableResult(otError                              aError,
-                                                               const otMeshDiagRouterNeighborEntry *aNeighborEntry)
-{
-    PercentageStringBuffer stringBuffer;
-    char                   string[OT_DURATION_STRING_SIZE];
-
-    VerifyOrExit(aNeighborEntry != nullptr);
-
-    OutputFormat("rloc16:0x%04x ext-addr:", aNeighborEntry->mRloc16);
-    OutputExtAddress(aNeighborEntry->mExtAddress);
-    OutputLine(" ver:%u", aNeighborEntry->mVersion);
-
-    OutputLine(kIndentSize, "rss - ave:%d last:%d margin:%d", aNeighborEntry->mAverageRssi, aNeighborEntry->mLastRssi,
-               aNeighborEntry->mLinkMargin);
-
-    if (aNeighborEntry->mSupportsErrRate)
-    {
-        OutputFormat(kIndentSize, "err-rate - frame:%s%% ",
-                     PercentageToString(aNeighborEntry->mFrameErrorRate, stringBuffer));
-        OutputLine("msg:%s%% ", PercentageToString(aNeighborEntry->mMessageErrorRate, stringBuffer));
-    }
-
-    otConvertDurationInSecondsToString(aNeighborEntry->mConnectionTime, string, sizeof(string));
-    OutputLine(kIndentSize, "conn-time:%s", string);
-
-exit:
-    OutputResult(aError);
-}
-
-void Interpreter::HandleMeshDiagQueryChildIp6Addrs(otError                    aError,
-                                                   uint16_t                   aChildRloc16,
-                                                   otMeshDiagIp6AddrIterator *aIp6AddrIterator,
-                                                   void                      *aContext)
-{
-    reinterpret_cast<Interpreter *>(aContext)->HandleMeshDiagQueryChildIp6Addrs(aError, aChildRloc16, aIp6AddrIterator);
-}
-
-void Interpreter::HandleMeshDiagQueryChildIp6Addrs(otError                    aError,
-                                                   uint16_t                   aChildRloc16,
-                                                   otMeshDiagIp6AddrIterator *aIp6AddrIterator)
-{
-    otIp6Address ip6Address;
-
-    VerifyOrExit(aError == OT_ERROR_NONE || aError == OT_ERROR_PENDING);
-    VerifyOrExit(aIp6AddrIterator != nullptr);
-
-    OutputLine("child-rloc16: 0x%04x", aChildRloc16);
-
-    while (otMeshDiagGetNextIp6Address(aIp6AddrIterator, &ip6Address) == OT_ERROR_NONE)
-    {
-        OutputSpaces(kIndentSize);
-        OutputIp6AddressLine(ip6Address);
     }
 
 exit:
@@ -6394,10 +6088,6 @@ otError Interpreter::ParseRoute(Arg aArgs[], otExternalRouteConfig &aConfig)
                     aConfig.mNat64 = true;
                     break;
 
-                case 'a':
-                    aConfig.mAdvPio = true;
-                    break;
-
                 case '-':
                     break;
 
@@ -7025,139 +6715,6 @@ template <> otError Interpreter::Process<Cmd("thread")>(Arg aArgs[])
     return error;
 }
 
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-template <> otError Interpreter::Process<Cmd("timeinqueue")>(Arg aArgs[])
-{
-    otError error = OT_ERROR_NONE;
-
-    /**
-     * @cli timeinqueue
-     * @code
-     * timeinqueue
-     * | Min  | Max  |Msg Count|
-     * +------+------+---------+
-     * |    0 |    9 |    1537 |
-     * |   10 |   19 |     156 |
-     * |   20 |   29 |      57 |
-     * |   30 |   39 |     108 |
-     * |   40 |   49 |      60 |
-     * |   50 |   59 |      76 |
-     * |   60 |   69 |      88 |
-     * |   70 |   79 |      51 |
-     * |   80 |   89 |      86 |
-     * |   90 |   99 |      45 |
-     * |  100 |  109 |      43 |
-     * |  110 |  119 |      44 |
-     * |  120 |  129 |      38 |
-     * |  130 |  139 |      44 |
-     * |  140 |  149 |      35 |
-     * |  150 |  159 |      41 |
-     * |  160 |  169 |      34 |
-     * |  170 |  179 |      13 |
-     * |  180 |  189 |      24 |
-     * |  190 |  199 |       3 |
-     * |  200 |  209 |       0 |
-     * |  210 |  219 |       0 |
-     * |  220 |  229 |       2 |
-     * |  230 |  239 |       0 |
-     * |  240 |  249 |       0 |
-     * |  250 |  259 |       0 |
-     * |  260 |  269 |       0 |
-     * |  270 |  279 |       0 |
-     * |  280 |  289 |       0 |
-     * |  290 |  299 |       1 |
-     * |  300 |  309 |       0 |
-     * |  310 |  319 |       0 |
-     * |  320 |  329 |       0 |
-     * |  330 |  339 |       0 |
-     * |  340 |  349 |       0 |
-     * |  350 |  359 |       0 |
-     * |  360 |  369 |       0 |
-     * |  370 |  379 |       0 |
-     * |  380 |  389 |       0 |
-     * |  390 |  399 |       0 |
-     * |  400 |  409 |       0 |
-     * |  410 |  419 |       0 |
-     * |  420 |  429 |       0 |
-     * |  430 |  439 |       0 |
-     * |  440 |  449 |       0 |
-     * |  450 |  459 |       0 |
-     * |  460 |  469 |       0 |
-     * |  470 |  479 |       0 |
-     * |  480 |  489 |       0 |
-     * |  490 |  inf |       0 |
-     * Done
-     * @endcode
-     * @par api_copy
-     * #otThreadGetTimeInQueueHistogram
-     * @csa{timeinqueue reset}
-     */
-    if (aArgs[0].IsEmpty())
-    {
-        static const char *const kTimeInQueueTableTitles[]       = {"Min", "Max", "Msg Count"};
-        static const uint8_t     kTimeInQueueTableColumnWidths[] = {6, 6, 9};
-
-        uint16_t        numBins;
-        uint32_t        binInterval;
-        const uint32_t *histogram;
-
-        OutputTableHeader(kTimeInQueueTableTitles, kTimeInQueueTableColumnWidths);
-
-        histogram = otThreadGetTimeInQueueHistogram(GetInstancePtr(), &numBins, &binInterval);
-
-        for (uint16_t index = 0; index < numBins; index++)
-        {
-            OutputFormat("| %4lu | ", ToUlong(index * binInterval));
-
-            if (index < numBins - 1)
-            {
-                OutputFormat("%4lu", ToUlong((index + 1) * binInterval - 1));
-            }
-            else
-            {
-                OutputFormat("%4s", "inf");
-            }
-
-            OutputLine(" | %7lu |", ToUlong(histogram[index]));
-        }
-    }
-    /**
-     * @cli timeinqueue max
-     * @code
-     * timeinqueue max
-     * 281
-     * Done
-     * @endcode
-     * @par api_copy
-     * #otThreadGetMaxTimeInQueue
-     * @csa{timeinqueue reset}
-     */
-    else if (aArgs[0] == "max")
-    {
-        OutputLine("%lu", ToUlong(otThreadGetMaxTimeInQueue(GetInstancePtr())));
-    }
-    /**
-     * @cli timeinqueue reset
-     * @code
-     * timeinqueue reset
-     * Done
-     * @endcode
-     * @par api_copy
-     * #otThreadResetTimeInQueueStat
-     */
-    else if (aArgs[0] == "reset")
-    {
-        otThreadResetTimeInQueueStat(GetInstancePtr());
-    }
-    else
-    {
-        error = OT_ERROR_INVALID_ARGS;
-    }
-
-    return error;
-}
-#endif // OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-
 template <> otError Interpreter::Process<Cmd("dataset")>(Arg aArgs[]) { return mDataset.Process(aArgs); }
 
 template <> otError Interpreter::Process<Cmd("txpower")>(Arg aArgs[])
@@ -7235,16 +6792,6 @@ template <> otError Interpreter::Process<Cmd("uptime")>(Arg aArgs[])
 {
     otError error = OT_ERROR_NONE;
 
-    /**
-     * @cli uptime
-     * @code
-     * uptime
-     * 12:46:35.469
-     * Done
-     * @endcode
-     * @par api_copy
-     * #otInstanceGetUptimeAsString
-     */
     if (aArgs[0].IsEmpty())
     {
         char string[OT_UPTIME_STRING_SIZE];
@@ -7252,17 +6799,6 @@ template <> otError Interpreter::Process<Cmd("uptime")>(Arg aArgs[])
         otInstanceGetUptimeAsString(GetInstancePtr(), string, sizeof(string));
         OutputLine("%s", string);
     }
-
-    /**
-     * @cli uptime ms
-     * @code
-     * uptime ms
-     * 426238
-     * Done
-     * @endcode
-     * @par api_copy
-     * #otInstanceGetUptime
-     */
     else if (aArgs[0] == "ms")
     {
         OutputUint64Line(otInstanceGetUptime(GetInstancePtr()));
@@ -7662,10 +7198,6 @@ void Interpreter::HandleDiagnosticGetResponse(otError                 aError,
             OutputLine("MAC Counters:");
             OutputNetworkDiagMacCounters(kIndentSize, diagTlv.mData.mMacCounters);
             break;
-        case OT_NETWORK_DIAGNOSTIC_TLV_MLE_COUNTERS:
-            OutputLine("MLE Counters:");
-            OutputNetworkDiagMleCounters(kIndentSize, diagTlv.mData.mMleCounters);
-            break;
         case OT_NETWORK_DIAGNOSTIC_TLV_BATTERY_LEVEL:
             OutputLine("Battery Level: %u%%", diagTlv.mData.mBatteryLevel);
             break;
@@ -7761,75 +7293,15 @@ void Interpreter::OutputLeaderData(uint8_t aIndentSize, const otLeaderData &aLea
 
 void Interpreter::OutputNetworkDiagMacCounters(uint8_t aIndentSize, const otNetworkDiagMacCounters &aMacCounters)
 {
-    struct CounterName
-    {
-        const uint32_t otNetworkDiagMacCounters::*mValuePtr;
-        const char                               *mName;
-    };
-
-    static const CounterName kCounterNames[] = {
-        {&otNetworkDiagMacCounters::mIfInUnknownProtos, "IfInUnknownProtos"},
-        {&otNetworkDiagMacCounters::mIfInErrors, "IfInErrors"},
-        {&otNetworkDiagMacCounters::mIfOutErrors, "IfOutErrors"},
-        {&otNetworkDiagMacCounters::mIfInUcastPkts, "IfInUcastPkts"},
-        {&otNetworkDiagMacCounters::mIfInBroadcastPkts, "IfInBroadcastPkts"},
-        {&otNetworkDiagMacCounters::mIfInDiscards, "IfInDiscards"},
-        {&otNetworkDiagMacCounters::mIfOutUcastPkts, "IfOutUcastPkts"},
-        {&otNetworkDiagMacCounters::mIfOutBroadcastPkts, "IfOutBroadcastPkts"},
-        {&otNetworkDiagMacCounters::mIfOutDiscards, "IfOutDiscards"},
-    };
-
-    for (const CounterName &counter : kCounterNames)
-    {
-        OutputLine(aIndentSize, "%s: %lu", counter.mName, ToUlong(aMacCounters.*counter.mValuePtr));
-    }
-}
-
-void Interpreter::OutputNetworkDiagMleCounters(uint8_t aIndentSize, const otNetworkDiagMleCounters &aMleCounters)
-{
-    struct CounterName
-    {
-        const uint16_t otNetworkDiagMleCounters::*mValuePtr;
-        const char                               *mName;
-    };
-
-    struct TimeCounterName
-    {
-        const uint64_t otNetworkDiagMleCounters::*mValuePtr;
-        const char                               *mName;
-    };
-
-    static const CounterName kCounterNames[] = {
-        {&otNetworkDiagMleCounters::mDisabledRole, "DisabledRole"},
-        {&otNetworkDiagMleCounters::mDetachedRole, "DetachedRole"},
-        {&otNetworkDiagMleCounters::mChildRole, "ChildRole"},
-        {&otNetworkDiagMleCounters::mRouterRole, "RouterRole"},
-        {&otNetworkDiagMleCounters::mLeaderRole, "LeaderRole"},
-        {&otNetworkDiagMleCounters::mAttachAttempts, "AttachAttempts"},
-        {&otNetworkDiagMleCounters::mPartitionIdChanges, "PartitionIdChanges"},
-        {&otNetworkDiagMleCounters::mBetterPartitionAttachAttempts, "BetterPartitionAttachAttempts"},
-        {&otNetworkDiagMleCounters::mParentChanges, "ParentChanges"},
-    };
-
-    static const TimeCounterName kTimeCounterNames[] = {
-        {&otNetworkDiagMleCounters::mTrackedTime, "TrackedTime"},
-        {&otNetworkDiagMleCounters::mDisabledTime, "DisabledTime"},
-        {&otNetworkDiagMleCounters::mDetachedTime, "DetachedTime"},
-        {&otNetworkDiagMleCounters::mChildTime, "ChildTime"},
-        {&otNetworkDiagMleCounters::mRouterTime, "RouterTime"},
-        {&otNetworkDiagMleCounters::mLeaderTime, "LeaderTime"},
-    };
-
-    for (const CounterName &counter : kCounterNames)
-    {
-        OutputLine(aIndentSize, "%s: %u", counter.mName, aMleCounters.*counter.mValuePtr);
-    }
-
-    for (const TimeCounterName &counter : kTimeCounterNames)
-    {
-        OutputFormat("%s: ", counter.mName);
-        OutputUint64Line(aMleCounters.*counter.mValuePtr);
-    }
+    OutputLine(aIndentSize, "IfInUnknownProtos: %lu", ToUlong(aMacCounters.mIfInUnknownProtos));
+    OutputLine(aIndentSize, "IfInErrors: %lu", ToUlong(aMacCounters.mIfInErrors));
+    OutputLine(aIndentSize, "IfOutErrors: %lu", ToUlong(aMacCounters.mIfOutErrors));
+    OutputLine(aIndentSize, "IfInUcastPkts: %lu", ToUlong(aMacCounters.mIfInUcastPkts));
+    OutputLine(aIndentSize, "IfInBroadcastPkts: %lu", ToUlong(aMacCounters.mIfInBroadcastPkts));
+    OutputLine(aIndentSize, "IfInDiscards: %lu", ToUlong(aMacCounters.mIfInDiscards));
+    OutputLine(aIndentSize, "IfOutUcastPkts: %lu", ToUlong(aMacCounters.mIfOutUcastPkts));
+    OutputLine(aIndentSize, "IfOutBroadcastPkts: %lu", ToUlong(aMacCounters.mIfOutBroadcastPkts));
+    OutputLine(aIndentSize, "IfOutDiscards: %lu", ToUlong(aMacCounters.mIfOutDiscards));
 }
 
 void Interpreter::OutputChildTableEntry(uint8_t aIndentSize, const otNetworkDiagChildEntry &aChildEntry)
@@ -7842,6 +7314,17 @@ void Interpreter::OutputChildTableEntry(uint8_t aIndentSize, const otNetworkDiag
     OutputMode(aIndentSize + kIndentSize, aChildEntry.mMode);
 }
 #endif // OPENTHREAD_CONFIG_TMF_NETDIAG_CLIENT_ENABLE
+
+void Interpreter::HandleDetachGracefullyResult(void *aContext)
+{
+    static_cast<Interpreter *>(aContext)->HandleDetachGracefullyResult();
+}
+
+void Interpreter::HandleDetachGracefullyResult(void)
+{
+    OutputLine("Finished detaching");
+    OutputResult(OT_ERROR_NONE);
+}
 
 #if OPENTHREAD_FTD
 void Interpreter::HandleDiscoveryRequest(const otThreadDiscoveryRequestInfo *aInfo, void *aContext)
@@ -8107,9 +7590,6 @@ otError Interpreter::ProcessCommand(Arg aArgs[])
 #if OPENTHREAD_CONFIG_MESH_DIAG_ENABLE && OPENTHREAD_FTD
         CmdEntry("meshdiag"),
 #endif
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-        CmdEntry("mleadvimax"),
-#endif
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
         CmdEntry("mliid"),
 #endif
@@ -8211,9 +7691,6 @@ otError Interpreter::ProcessCommand(Arg aArgs[])
         CmdEntry("tcp"),
 #endif
         CmdEntry("thread"),
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-        CmdEntry("timeinqueue"),
-#endif
 #if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
         CmdEntry("trel"),
 #endif

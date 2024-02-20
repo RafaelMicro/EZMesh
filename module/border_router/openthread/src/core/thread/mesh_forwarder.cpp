@@ -132,10 +132,6 @@ MeshForwarder::MeshForwarder(Instance &aInstance)
 #if OPENTHREAD_FTD
     mFragmentPriorityList.Clear();
 #endif
-
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-    mTxQueueStats.Clear();
-#endif
 }
 
 void MeshForwarder::Start(void)
@@ -193,7 +189,8 @@ void MeshForwarder::PrepareEmptyFrame(Mac::TxFrame &aFrame, const Mac::Address &
     }
 
     addresses.mDestination = aMacDest;
-    panIds.SetBothSourceDestination(Get<Mac::Mac>().GetPanId());
+    panIds.mSource         = Get<Mac::Mac>().GetPanId();
+    panIds.mDestination    = Get<Mac::Mac>().GetPanId();
 
     PrepareMacHeaders(aFrame, Mac::Frame::kTypeData, addresses, panIds, Mac::Frame::kSecurityEncMic32,
                       Mac::Frame::kKeyIdMode1, nullptr);
@@ -383,9 +380,6 @@ Error MeshForwarder::UpdateEcnOrDrop(Message &aMessage, bool aPreparingToSend)
 exit:
     if (error == kErrorDrop)
     {
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-        mTxQueueStats.UpdateFor(aMessage);
-#endif
         LogMessage(kMessageQueueMgmtDrop, aMessage);
         aMessage.ClearDirectTransmission();
         RemoveMessageIfNoPendingTx(aMessage);
@@ -410,7 +404,7 @@ Error MeshForwarder::RemoveAgedMessages(void)
         nextMessage = message->GetNext();
 
         // Exclude the current message being sent `mSendMessage`.
-        if ((message == mSendMessage) || !message->IsDirectTransmission() || message->GetDoNotEvict())
+        if ((message == mSendMessage) || !message->IsDirectTransmission())
         {
             continue;
         }
@@ -493,27 +487,9 @@ void MeshForwarder::ApplyDirectTxQueueLimit(Message &aMessage)
     VerifyOrExit(IsDirectTxQueueOverMaxFrameThreshold());
 
 #if OPENTHREAD_CONFIG_DELAY_AWARE_QUEUE_MANAGEMENT_ENABLE
+    if (RemoveAgedMessages() == kErrorNone)
     {
-        bool  originalEvictFlag = aMessage.GetDoNotEvict();
-        Error error;
-
-        // We mark the "do not evict" flag on the new `aMessage` so
-        // that it will not be removed from `RemoveAgedMessages()`.
-        // This protects against the unlikely case where the newly
-        // queued `aMessage` may already be aged due to execution
-        // being interrupted for a long time between the queuing of
-        // the message and the `ApplyDirectTxQueueLimit()` call. We
-        // do not want the message to be potentially removed and
-        // freed twice.
-
-        aMessage.SetDoNotEvict(true);
-        error = RemoveAgedMessages();
-        aMessage.SetDoNotEvict(originalEvictFlag);
-
-        if (error == kErrorNone)
-        {
-            VerifyOrExit(IsDirectTxQueueOverMaxFrameThreshold());
-        }
+        VerifyOrExit(IsDirectTxQueueOverMaxFrameThreshold());
     }
 #endif
 
@@ -526,23 +502,6 @@ exit:
 }
 
 #endif // (OPENTHREAD_CONFIG_MAX_FRAMES_IN_DIRECT_TX_QUEUE > 0)
-
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-const uint32_t *MeshForwarder::TxQueueStats::GetHistogram(uint16_t &aNumBins, uint32_t &aBinInterval) const
-{
-    aNumBins     = kNumHistBins;
-    aBinInterval = kHistBinInterval;
-    return mHistogram;
-}
-
-void MeshForwarder::TxQueueStats::UpdateFor(const Message &aMessage)
-{
-    uint32_t timeInQueue = TimerMilli::GetNow() - aMessage.GetTimestamp();
-
-    mHistogram[Min<uint32_t>(timeInQueue / kHistBinInterval, kNumHistBins - 1)]++;
-    mMaxInterval = Max(mMaxInterval, timeInQueue);
-}
-#endif
 
 void MeshForwarder::ScheduleTransmissionTask(void)
 {
@@ -586,7 +545,7 @@ Message *MeshForwarder::PrepareNextDirectTransmission(void)
         }
 
 #if OPENTHREAD_CONFIG_DELAY_AWARE_QUEUE_MANAGEMENT_ENABLE
-        if (UpdateEcnOrDrop(*curMessage, /* aPreparingToSend */ true) == kErrorDrop)
+        if (UpdateEcnOrDrop(*curMessage) == kErrorDrop)
         {
             continue;
         }
@@ -626,9 +585,6 @@ Message *MeshForwarder::PrepareNextDirectTransmission(void)
         switch (error)
         {
         case kErrorNone:
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-            mTxQueueStats.UpdateFor(*curMessage);
-#endif
             ExitNow();
 
 #if OPENTHREAD_FTD
@@ -638,9 +594,6 @@ Message *MeshForwarder::PrepareNextDirectTransmission(void)
 #endif
 
         default:
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-            mTxQueueStats.UpdateFor(*curMessage);
-#endif
             LogMessage(kMessageDrop, *curMessage, error);
             mSendQueue.DequeueAndFree(*curMessage);
             continue;
@@ -925,19 +878,20 @@ start:
         }
     }
 
-    panIds.SetBothSourceDestination(Get<Mac::Mac>().GetPanId());
+    panIds.mSource      = Get<Mac::Mac>().GetPanId();
+    panIds.mDestination = Get<Mac::Mac>().GetPanId();
 
     switch (aMessage.GetSubType())
     {
     case Message::kSubTypeMleAnnounce:
         aFrame.SetChannel(aMessage.GetChannel());
         aFrame.SetRxChannelAfterTxDone(Get<Mac::Mac>().GetPanChannel());
-        panIds.SetDestination(Mac::kPanIdBroadcast);
+        panIds.mDestination = Mac::kPanIdBroadcast;
         break;
 
     case Message::kSubTypeMleDiscoverRequest:
     case Message::kSubTypeMleDiscoverResponse:
-        panIds.SetDestination(aMessage.GetPanId());
+        panIds.mDestination = aMessage.GetPanId();
         break;
 
     default:
@@ -1090,14 +1044,6 @@ start:
     return nextOffset;
 }
 
-uint16_t MeshForwarder::PrepareDataFrameWithNoMeshHeader(Mac::TxFrame         &aFrame,
-                                                         Message              &aMessage,
-                                                         const Mac::Addresses &aMacAddrs)
-{
-    return PrepareDataFrame(aFrame, aMessage, aMacAddrs, /* aAddMeshHeader */ false, /* aMeshSource */ 0xffff,
-                            /* aMeshDest */ 0xffff, /* aAddFragHeader */ false);
-}
-
 Neighbor *MeshForwarder::UpdateNeighborOnSentFrame(Mac::TxFrame       &aFrame,
                                                    Error               aError,
                                                    const Mac::Address &aMacDest,
@@ -1105,8 +1051,7 @@ Neighbor *MeshForwarder::UpdateNeighborOnSentFrame(Mac::TxFrame       &aFrame,
 {
     OT_UNUSED_VARIABLE(aIsDataPoll);
 
-    Neighbor *neighbor  = nullptr;
-    uint8_t   failLimit = kFailedRouterTransmissions;
+    Neighbor *neighbor = nullptr;
 
     VerifyOrExit(mEnabled);
 
@@ -1130,11 +1075,14 @@ Neighbor *MeshForwarder::UpdateNeighborOnSentFrame(Mac::TxFrame       &aFrame,
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
     if ((aFrame.GetHeaderIe(Mac::CslIe::kHeaderIeId) != nullptr) && aIsDataPoll)
     {
-        failLimit = kFailedCslDataPollTransmissions;
+        UpdateNeighborLinkFailures(*neighbor, aError, /* aAllowNeighborRemove */ true,
+                                   /* aFailLimit */ Mle::kFailedCslDataPollTransmissions);
     }
+    else
 #endif
-
-    UpdateNeighborLinkFailures(*neighbor, aError, /* aAllowNeighborRemove */ true, failLimit);
+    {
+        UpdateNeighborLinkFailures(*neighbor, aError, /* aAllowNeighborRemove */ true);
+    }
 
 exit:
     return neighbor;
@@ -1181,7 +1129,7 @@ void MeshForwarder::HandleDeferredAck(Neighbor &aNeighbor, Error aError)
     // link failure counter and removes the neighbor if required.
     Get<RadioSelector>().UpdateOnDeferredAck(aNeighbor, aError, allowNeighborRemove);
 #else
-    UpdateNeighborLinkFailures(aNeighbor, aError, allowNeighborRemove, kFailedRouterTransmissions);
+    UpdateNeighborLinkFailures(aNeighbor, aError, allowNeighborRemove);
 #endif
 
 exit:
@@ -1216,7 +1164,7 @@ void MeshForwarder::HandleSentFrame(Mac::TxFrame &aFrame, Error aError)
     if (!aFrame.IsEmpty())
     {
         IgnoreError(aFrame.GetDstAddr(macDest));
-        neighbor = UpdateNeighborOnSentFrame(aFrame, aError, macDest, /* aIsDataPoll */ false);
+        neighbor = UpdateNeighborOnSentFrame(aFrame, aError, macDest);
     }
 
     UpdateSendMessage(aError, macDest, neighbor);
@@ -1934,16 +1882,6 @@ exit:
     return;
 }
 
-void MeshForwarder::LogMessage(MessageAction aAction, const Message &aMessage)
-{
-    LogMessage(aAction, aMessage, kErrorNone);
-}
-
-void MeshForwarder::LogMessage(MessageAction aAction, const Message &aMessage, Error aError)
-{
-    LogMessage(aAction, aMessage, aError, nullptr);
-}
-
 void MeshForwarder::LogMessage(MessageAction       aAction,
                                const Message      &aMessage,
                                Error               aError,
@@ -2033,10 +1971,6 @@ void MeshForwarder::LogLowpanHcFrameDrop(Error                 aError,
 }
 
 #else // #if OT_SHOULD_LOG_AT( OT_LOG_LEVEL_NOTE)
-
-void MeshForwarder::LogMessage(MessageAction, const Message &) {}
-
-void MeshForwarder::LogMessage(MessageAction, const Message &, Error) {}
 
 void MeshForwarder::LogMessage(MessageAction, const Message &, Error, const Mac::Address *) {}
 

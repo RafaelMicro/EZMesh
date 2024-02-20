@@ -29,7 +29,8 @@
 
 set -euxo pipefail
 
-readonly OT_BUILDDIR="$(pwd)/build"
+OT_BUILDDIR="$(pwd)/build"
+readonly OT_BUILDDIR
 
 reset_source()
 {
@@ -50,6 +51,13 @@ build()
         "-DOT_TREL=ON"
     )
 
+    if [[ $OSTYPE != "darwin"* ]]; then
+        options+=(
+            "-DOT_BORDER_ROUTING=ON"
+            "-DOT_SRP_SERVER=ON"
+        )
+    fi
+
     reset_source
     "$(dirname "$0")"/cmake-build posix "${options[@]}"
 }
@@ -59,9 +67,12 @@ main()
     reset_source
     build "$@"
 
+    reset_source
+    build -DOT_RCP_RESTORATION_MAX_COUNT=2
+
     if [[ $OSTYPE != "darwin"* ]]; then
         reset_source
-        build -DOT_POSIX_CONFIG_RCP_BUS=SPI "$@"
+        build -DOT_RCP_RESTORATION_MAX_COUNT=2 -DOT_POSIX_CONFIG_RCP_BUS=SPI "$@"
     fi
 
     reset_source

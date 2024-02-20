@@ -219,7 +219,7 @@ void Initiator::HandleReport(const Message &aMessage, uint16_t aOffset, uint16_t
     VerifyOrExit(hasStatus || hasReport);
 
     mReportCallback.Invoke(&aAddress, hasStatus ? nullptr : &values,
-                           hasStatus ? MapEnum(static_cast<Status>(status)) : MapEnum(kStatusSuccess));
+                           hasStatus ? static_cast<Status>(status) : kStatusSuccess);
 
 exit:
     LogDebg("HandleReport, error:%s", ErrorToString(error));
@@ -337,7 +337,7 @@ Error Initiator::HandleManagementResponse(const Message &aMessage, const Ip6::Ad
 
     VerifyOrExit(hasStatus, error = kErrorParse);
 
-    mMgmtResponseCallback.Invoke(&aAddress, MapEnum(static_cast<Status>(status)));
+    mMgmtResponseCallback.Invoke(&aAddress, status);
 
 exit:
     return error;

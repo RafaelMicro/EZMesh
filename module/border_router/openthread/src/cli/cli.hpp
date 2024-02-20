@@ -428,23 +428,6 @@ private:
 #if OPENTHREAD_CONFIG_MESH_DIAG_ENABLE && OPENTHREAD_FTD
     static void HandleMeshDiagDiscoverDone(otError aError, otMeshDiagRouterInfo *aRouterInfo, void *aContext);
     void        HandleMeshDiagDiscoverDone(otError aError, otMeshDiagRouterInfo *aRouterInfo);
-    static void HandleMeshDiagQueryChildTableResult(otError                     aError,
-                                                    const otMeshDiagChildEntry *aChildEntry,
-                                                    void                       *aContext);
-    void        HandleMeshDiagQueryChildTableResult(otError aError, const otMeshDiagChildEntry *aChildEntry);
-    static void HandleMeshDiagQueryChildIp6Addrs(otError                    aError,
-                                                 uint16_t                   aChildRloc16,
-                                                 otMeshDiagIp6AddrIterator *aIp6AddrIterator,
-                                                 void                      *aContext);
-    void        HandleMeshDiagQueryChildIp6Addrs(otError                    aError,
-                                                 uint16_t                   aChildRloc16,
-                                                 otMeshDiagIp6AddrIterator *aIp6AddrIterator);
-    static void HandleMeshDiagQueryRouterNeighborTableResult(otError                              aError,
-                                                             const otMeshDiagRouterNeighborEntry *aNeighborEntry,
-                                                             void                                *aContext);
-    void        HandleMeshDiagQueryRouterNeighborTableResult(otError                              aError,
-                                                             const otMeshDiagRouterNeighborEntry *aNeighborEntry);
-
 #endif
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
     static void HandleMlrRegResult(void               *aContext,
@@ -482,7 +465,6 @@ private:
     void OutputRouteData(uint8_t aIndentSize, const otNetworkDiagRouteData &aRouteData);
     void OutputLeaderData(uint8_t aIndentSize, const otLeaderData &aLeaderData);
     void OutputNetworkDiagMacCounters(uint8_t aIndentSize, const otNetworkDiagMacCounters &aMacCounters);
-    void OutputNetworkDiagMleCounters(uint8_t aIndentSize, const otNetworkDiagMleCounters &aMleCounters);
     void OutputChildTableEntry(uint8_t aIndentSize, const otNetworkDiagChildEntry &aChildEntry);
 #endif
 
@@ -512,18 +494,16 @@ private:
 
     static void HandleLinkMetricsReport(const otIp6Address        *aAddress,
                                         const otLinkMetricsValues *aMetricsValues,
-                                        otLinkMetricsStatus        aStatus,
+                                        uint8_t                    aStatus,
                                         void                      *aContext);
 
     void HandleLinkMetricsReport(const otIp6Address        *aAddress,
                                  const otLinkMetricsValues *aMetricsValues,
-                                 otLinkMetricsStatus        aStatus);
+                                 uint8_t                    aStatus);
 
-    static void HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress,
-                                              otLinkMetricsStatus aStatus,
-                                              void               *aContext);
+    static void HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, uint8_t aStatus, void *aContext);
 
-    void HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, otLinkMetricsStatus aStatus);
+    void HandleLinkMetricsMgmtResponse(const otIp6Address *aAddress, uint8_t aStatus);
 
     static void HandleLinkMetricsEnhAckProbingIe(otShortAddress             aShortAddress,
                                                  const otExtAddress        *aExtAddress,
@@ -534,7 +514,7 @@ private:
                                           const otExtAddress        *aExtAddress,
                                           const otLinkMetricsValues *aMetricsValues);
 
-    const char *LinkMetricsStatusToStr(otLinkMetricsStatus aStatus);
+    const char *LinkMetricsStatusToStr(uint8_t aStatus);
 #endif // OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE
 
     static void HandleDetachGracefullyResult(void *aContext);

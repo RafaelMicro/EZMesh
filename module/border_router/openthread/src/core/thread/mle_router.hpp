@@ -502,14 +502,6 @@ public:
      */
     void ResetAdvertiseInterval(void);
 
-    /**
-     * Updates the MLE Advertisement Trickle timer max interval (if timer is running).
-     *
-     * This is called when there is change in router table.
-     *
-     */
-    void UpdateAdvertiseInterval(void);
-
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     /**
      * Generates an MLE Time Synchronization message.
@@ -540,7 +532,6 @@ public:
     uint8_t GetMaxChildIpAddresses(void) const;
 
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-
     /**
      * Sets/restores the maximum number of IP addresses that each MTD child may register with this
      * device as parent.
@@ -569,36 +560,9 @@ public:
      *
      */
     void SetThreadVersionCheckEnabled(bool aEnabled) { mThreadVersionCheckEnabled = aEnabled; }
-
-    /**
-     * Gets the current Interval Max value used by Advertisement trickle timer.
-     *
-     * @returns The Interval Max of Advertisement trickle timer in milliseconds.
-     *
-     */
-    uint32_t GetAdvertisementTrickleIntervalMax(void) const { return mAdvertiseTrickleTimer.GetIntervalMax(); }
-
-#endif // OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-
-private:
-    // Advertisement trickle timer constants - all times are in milliseconds.
-    static constexpr uint32_t kAdvIntervalMin                = 1000;  // I_MIN
-    static constexpr uint32_t kAdvIntervalNeighborMultiplier = 4000;  // Multiplier for I_MAX per router neighbor
-    static constexpr uint32_t kAdvIntervalMaxLowerBound      = 12000; // Lower bound for I_MAX
-    static constexpr uint32_t kAdvIntervalMaxUpperBound      = 32000; // Upper bound for I_MAX
-    static constexpr uint32_t kReedAdvIntervalMin            = 570000;
-    static constexpr uint32_t kReedAdvIntervalMax            = 630000;
-#if OPENTHREAD_CONFIG_MLE_LONG_ROUTES_ENABLE
-    static constexpr uint32_t kAdvIntervalMaxLogRoutes = 5000;
 #endif
 
-    static constexpr uint32_t kMaxNeighborAge                = 100000; // Max neighbor age (in msec)
-    static constexpr uint32_t kMaxLeaderToRouterTimeout      = 90000;  // (in msec)
-    static constexpr uint8_t  kMinDowngradeNeighbors         = 7;
-    static constexpr uint8_t  kNetworkIdTimeout              = 120; // (in sec)
-    static constexpr uint8_t  kRouterSelectionJitter         = 120; // (in sec)
-    static constexpr uint8_t  kRouterDowngradeThreshold      = 23;
-    static constexpr uint8_t  kRouterUpgradeThreshold        = 16;
+private:
     static constexpr uint16_t kDiscoveryMaxJitter            = 250; // Max jitter delay Discovery Responses (in msec).
     static constexpr uint16_t kChallengeTimeout              = 2;   // Challenge timeout (in sec).
     static constexpr uint16_t kUnsolicitedDataResponseJitter = 500; // Max delay for unsol Data Response (in msec).
@@ -619,11 +583,6 @@ private:
 
     static constexpr uint16_t kChildSupervisionDefaultIntervalForOlderVersion =
         OPENTHREAD_CONFIG_CHILD_SUPERVISION_OLDER_VERSION_CHILD_DEFAULT_INTERVAL;
-
-    static constexpr int8_t kParentPriorityHigh        = 1;
-    static constexpr int8_t kParentPriorityMedium      = 0;
-    static constexpr int8_t kParentPriorityLow         = -1;
-    static constexpr int8_t kParentPriorityUnspecified = -2;
 
     void  HandleDetachStart(void);
     void  HandleChildStart(AttachMode aMode);
@@ -647,9 +606,7 @@ private:
     Error ProcessRouteTlv(const RouteTlv &aRouteTlv, RxInfo &aRxInfo);
     Error ReadAndProcessRouteTlvOnFed(RxInfo &aRxInfo, uint8_t aParentId);
 
-    void     StopAdvertiseTrickleTimer(void);
-    uint32_t DetermineAdvertiseIntervalMax(void) const;
-
+    void  StopAdvertiseTrickleTimer(void);
     Error SendAddressSolicit(ThreadStatusTlv::Status aStatus);
     void  SendAddressSolicitResponse(const Coap::Message    &aRequest,
                                      ThreadStatusTlv::Status aResponseStatus,
@@ -660,14 +617,14 @@ private:
     Error SendLinkAccept(const Ip6::MessageInfo &aMessageInfo,
                          Neighbor               *aNeighbor,
                          const TlvList          &aRequestedTlvList,
-                         const RxChallenge      &aChallenge);
-    void  SendParentResponse(Child *aChild, const RxChallenge &aChallenge, bool aRoutersOnlyRequest);
+                         const Challenge        &aChallenge);
+    void  SendParentResponse(Child *aChild, const Challenge &aChallenge, bool aRoutersOnlyRequest);
     Error SendChildIdResponse(Child &aChild);
     Error SendChildUpdateRequest(Child &aChild);
     void  SendChildUpdateResponse(Child                  *aChild,
                                   const Ip6::MessageInfo &aMessageInfo,
                                   const TlvList          &aTlvList,
-                                  const RxChallenge      &aChallenge);
+                                  const Challenge        &aChallenge);
     void  SendDataResponse(const Ip6::Address &aDestination,
                            const TlvList      &aTlvList,
                            uint16_t            aDelay,
@@ -711,8 +668,8 @@ private:
     ChildTable  mChildTable;
     RouterTable mRouterTable;
 
-    uint8_t     mChallengeTimeout;
-    TxChallenge mChallenge;
+    uint8_t   mChallengeTimeout;
+    Challenge mChallenge;
 
     uint16_t mNextChildId;
     uint8_t  mNetworkIdTimeout;

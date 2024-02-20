@@ -273,6 +273,8 @@ void Commissioner::RemoveJoinerEntry(Commissioner::Joiner &aJoiner)
         mActiveJoiner = nullptr;
     }
 
+    UpdateJoinerExpirationTimer();
+
     SendCommissionerSet();
 
     LogJoinerEntry("Removed", joinerCopy);
@@ -479,7 +481,7 @@ Error Commissioner::AddJoiner(const Mac::ExtAddress *aEui64,
 
     joiner->mExpirationTime = TimerMilli::GetNow() + Time::SecToMsec(aTimeout);
 
-    mJoinerExpirationTimer.FireAtIfEarlier(joiner->mExpirationTime);
+    UpdateJoinerExpirationTimer();
 
     SendCommissionerSet();
 
@@ -575,7 +577,7 @@ void Commissioner::RemoveJoiner(Joiner &aJoiner, uint32_t aDelay)
         if (aJoiner.mExpirationTime > newExpirationTime)
         {
             aJoiner.mExpirationTime = newExpirationTime;
-            mJoinerExpirationTimer.FireAtIfEarlier(newExpirationTime);
+            UpdateJoinerExpirationTimer();
         }
     }
     else
@@ -627,8 +629,7 @@ void Commissioner::HandleTimer(void)
 
 void Commissioner::HandleJoinerExpirationTimer(void)
 {
-    TimeMilli now  = TimerMilli::GetNow();
-    TimeMilli next = now.GetDistantFuture();
+    TimeMilli now = TimerMilli::GetNow();
 
     for (Joiner &joiner : mJoiners)
     {
@@ -642,15 +643,33 @@ void Commissioner::HandleJoinerExpirationTimer(void)
             LogDebg("removing joiner due to timeout or successfully joined");
             RemoveJoinerEntry(joiner);
         }
-        else
-        {
-            next = Min(joiner.mExpirationTime, next);
-        }
     }
 
-    if (next != now.GetDistantFuture())
+    UpdateJoinerExpirationTimer();
+}
+
+void Commissioner::UpdateJoinerExpirationTimer(void)
+{
+    TimeMilli now  = TimerMilli::GetNow();
+    TimeMilli next = now.GetDistantFuture();
+
+    for (Joiner &joiner : mJoiners)
     {
-        mJoinerExpirationTimer.FireAtIfEarlier(next);
+        if (joiner.mType == Joiner::kTypeUnused)
+        {
+            continue;
+        }
+
+        next = Min(next, Max(now, joiner.mExpirationTime));
+    }
+
+    if (next < now.GetDistantFuture())
+    {
+        mJoinerExpirationTimer.FireAt(next);
+    }
+    else
+    {
+        mJoinerExpirationTimer.Stop();
     }
 }
 

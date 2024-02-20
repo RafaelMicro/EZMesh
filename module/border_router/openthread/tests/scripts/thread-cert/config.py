@@ -123,10 +123,18 @@ RSSI = {
 }
 
 SNIFFER_ID = int(os.getenv('SNIFFER_ID', 34))
+
+CHANNEL = 11
+CHANNEL_MASK = 0x07fff800
+EXTENDED_PANID = 'dead00beef00cafe'
+NETWORK_NAME = 'OpenThread'
 PANID = 0xface
+PSKC = 'c23a76e98f1a6483639b1ac1271e2e27'
+SECURITY_POLICY = [672, 'onrc']
 
 LEADER_STARTUP_DELAY = 12
 ROUTER_STARTUP_DELAY = 10
+ED_STARTUP_DELAY = 5
 BORDER_ROUTER_STARTUP_DELAY = 20
 MAX_NEIGHBOR_AGE = 100
 INFINITE_COST_TIMEOUT = 90
@@ -152,6 +160,13 @@ THREAD_VERSION_1_3 = 4
 PACKET_VERIFICATION_NONE = 0
 PACKET_VERIFICATION_DEFAULT = 1
 PACKET_VERIFICATION_TREL = 2
+
+# After leader reset it may retransmit link request 6 times with max 5.5s interval
+LEADER_RESET_DELAY = 41
+# After router reset it may retransmit link request 3 times with max 5.5s interval
+ROUTER_RESET_DELAY = 23
+MLE_MAX_CRITICAL_TRANSMISSION_COUNT = 6
+MLE_MAX_TRANSMISSION_COUNT = 3
 
 
 def create_default_network_data_prefix_sub_tlvs_factories():
@@ -322,7 +337,7 @@ def create_deafult_network_tlvs_factories():
         network_layer.TlvType.XTAL_ACCURACY:
             network_layer.XtalAccuracyFactory(),
         # Routing information are distributed in a Thread network by MLE Routing TLV
-        # which is in fact MLE Route64 TLV. Thread specificaton v1.1. - Chapter 5.20
+        # which is in fact MLE Route64 TLV. Thread specification v1.1. - Chapter 5.20
         network_layer.TlvType.MLE_ROUTING:
             create_default_mle_tlv_route64_factory(),
         network_layer.TlvType.IPv6_ADDRESSES:

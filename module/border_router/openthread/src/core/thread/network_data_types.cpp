@@ -184,11 +184,6 @@ uint8_t ExternalRouteConfig::ConvertToTlvFlags(void) const
         flags |= HasRouteEntry::kNat64Flag;
     }
 
-    if (mAdvPio)
-    {
-        flags |= HasRouteEntry::kAdvPioFlag;
-    }
-
     flags |= (RoutePreferenceToValue(mPreference) << HasRouteEntry::kPreferenceOffset);
 
     return flags;
@@ -213,7 +208,6 @@ void ExternalRouteConfig::SetFrom(Instance            &aInstance,
 void ExternalRouteConfig::SetFromTlvFlags(uint8_t aFlags)
 {
     mNat64      = ((aFlags & HasRouteEntry::kNat64Flag) != 0);
-    mAdvPio     = ((aFlags & HasRouteEntry::kAdvPioFlag) != 0);
     mPreference = RoutePreferenceFromValue(aFlags >> HasRouteEntry::kPreferenceOffset);
 }
 

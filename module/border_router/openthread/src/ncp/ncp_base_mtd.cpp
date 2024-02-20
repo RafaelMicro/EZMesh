@@ -261,12 +261,12 @@ exit:
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_THREAD_CSL_PERIOD>(void)
 {
-    uint32_t cslPeriod;
+    uint16_t cslPeriod;
     otError  error = OT_ERROR_NONE;
 
-    SuccessOrExit(error = mDecoder.ReadUint32(cslPeriod));
+    SuccessOrExit(error = mDecoder.ReadUint16(cslPeriod));
 
-    error = otLinkSetCslPeriod(mInstance, cslPeriod);
+    error = otLinkCslSetPeriod(mInstance, cslPeriod);
 
 exit:
     return error;
@@ -274,7 +274,7 @@ exit:
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_CSL_PERIOD>(void)
 {
-    return mEncoder.WriteUint32(otLinkGetCslPeriod(mInstance));
+    return mEncoder.WriteUint16(otLinkCslGetPeriod(mInstance));
 }
 
 template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_THREAD_CSL_TIMEOUT>(void)
@@ -284,7 +284,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_THREAD_CSL_TIMEOUT>(v
 
     SuccessOrExit(error = mDecoder.ReadUint32(cslTimeout));
 
-    error = otLinkSetCslTimeout(mInstance, cslTimeout);
+    error = otLinkCslSetTimeout(mInstance, cslTimeout);
 
 exit:
     return error;
@@ -292,7 +292,7 @@ exit:
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_CSL_TIMEOUT>(void)
 {
-    return mEncoder.WriteUint32(otLinkGetCslTimeout(mInstance));
+    return mEncoder.WriteUint32(otLinkCslGetTimeout(mInstance));
 }
 
 template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_THREAD_CSL_CHANNEL>(void)
@@ -302,7 +302,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_THREAD_CSL_CHANNEL>(v
 
     SuccessOrExit(error = mDecoder.ReadUint8(cslChannel));
 
-    error = otLinkSetCslChannel(mInstance, cslChannel);
+    error = otLinkCslSetChannel(mInstance, cslChannel);
 
 exit:
     return error;
@@ -310,7 +310,7 @@ exit:
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_CSL_CHANNEL>(void)
 {
-    return mEncoder.WriteUint8(otLinkGetCslChannel(mInstance));
+    return mEncoder.WriteUint8(otLinkCslGetChannel(mInstance));
 }
 #endif // OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
 
@@ -4230,7 +4230,7 @@ void NcpBase::HandleJoinerCallback(otError aError)
 #if OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE
 void NcpBase::HandleLinkMetricsReport_Jump(const otIp6Address        *aSource,
                                            const otLinkMetricsValues *aMetricsValues,
-                                           otLinkMetricsStatus        aStatus,
+                                           uint8_t                    aStatus,
                                            void                      *aContext)
 {
     static_cast<NcpBase *>(aContext)->HandleLinkMetricsReport(aSource, aMetricsValues, aStatus);
@@ -4238,7 +4238,7 @@ void NcpBase::HandleLinkMetricsReport_Jump(const otIp6Address        *aSource,
 
 void NcpBase::HandleLinkMetricsReport(const otIp6Address        *aSource,
                                       const otLinkMetricsValues *aMetricsValues,
-                                      otLinkMetricsStatus        aStatus)
+                                      uint8_t                    aStatus)
 {
     SuccessOrExit(mEncoder.BeginFrame(SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0, SPINEL_CMD_PROP_VALUE_IS,
                                       SPINEL_PROP_THREAD_LINK_METRICS_QUERY_RESULT));
@@ -4253,14 +4253,12 @@ exit:
     return;
 }
 
-void NcpBase::HandleLinkMetricsMgmtResponse_Jump(const otIp6Address *aSource,
-                                                 otLinkMetricsStatus aStatus,
-                                                 void               *aContext)
+void NcpBase::HandleLinkMetricsMgmtResponse_Jump(const otIp6Address *aSource, uint8_t aStatus, void *aContext)
 {
     static_cast<NcpBase *>(aContext)->HandleLinkMetricsMgmtResponse(aSource, aStatus);
 }
 
-void NcpBase::HandleLinkMetricsMgmtResponse(const otIp6Address *aSource, otLinkMetricsStatus aStatus)
+void NcpBase::HandleLinkMetricsMgmtResponse(const otIp6Address *aSource, uint8_t aStatus)
 {
     SuccessOrExit(mEncoder.BeginFrame(SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0, SPINEL_CMD_PROP_VALUE_IS,
                                       SPINEL_PROP_THREAD_LINK_METRICS_MGMT_RESPONSE));

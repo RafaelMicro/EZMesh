@@ -90,6 +90,7 @@ class TlvType(IntEnum):
     ACTIVE_OPERATIONAL_DATASET = 24
     PENDING_OPERATIONAL_DATASET = 25
     THREAD_DISCOVERY = 26
+    SUPERVISION_INTERVAL = 27
     CSL_CHANNEL = 80
     CSL_SYNCHRONIZED_TIMEOUT = 85
     CSL_CLOCK_ACCURACY = 86
@@ -331,7 +332,7 @@ class LinkQualityAndRouteData(object):
         return (self.output == other.output and self.input == other.input and self.route == other.route)
 
     def __repr__(self):
-        return "LinkQualityAndRouteData(ouput={}, input={}, route={})".format(self.output, self.input, self.route)
+        return "LinkQualityAndRouteData(output={}, input={}, route={})".format(self.output, self.input, self.route)
 
 
 class LinkQualityAndRouteDataFactory:

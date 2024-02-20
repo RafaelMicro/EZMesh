@@ -58,6 +58,7 @@
 #include "common/types.hpp"
 #include "ncp/ncp_openthread.hpp"
 
+static const char kSyslogIdent[]          = "otbr-agent";
 static const char kDefaultInterfaceName[] = "wpan0";
 
 // Port number used by Rest server.
@@ -267,7 +268,7 @@ static int realmain(int argc, char *argv[])
         }
     }
 
-    otbrLogInit(argv[0], logLevel, verbose);
+    otbrLogInit(kSyslogIdent, logLevel, verbose);
     otbrLogNotice("Running %s", OTBR_PACKAGE_VERSION);
     otbrLogNotice("Thread version: %s", otbr::Ncp::ControllerOpenThread::GetThreadVersion());
     otbrLogNotice("Thread interface: %s", interfaceName);

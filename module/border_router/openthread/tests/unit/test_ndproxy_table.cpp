@@ -50,7 +50,7 @@ Ip6::InterfaceIdentifier generateRandomIid(uint16_t aIndex)
 {
     Ip6::InterfaceIdentifier iid;
 
-    Random::NonCrypto::FillBuffer(iid.mFields.m8, sizeof(iid));
+    Random::NonCrypto::Fill(iid);
     iid.mFields.m16[3] = aIndex;
 
     return iid;
@@ -111,8 +111,5 @@ int main(void)
 }
 
 #else
-int main(void)
-{
-    return 0;
-}
+int main(void) { return 0; }
 #endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE

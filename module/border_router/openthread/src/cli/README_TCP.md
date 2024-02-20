@@ -58,7 +58,7 @@ For a more in-depth example, see [this video](https://youtu.be/ppZ784YUKlI).
 - [init](#init-size)
 - [deinit](#deinit)
 - [bind](#bind-ip-port)
-- [connect](#connect-ip-port-fastopen)
+- [connect](#connect-ip-port)
 - [send](#send-message)
 - [benchmark](#benchmark-run-size)
 - [sendend](#sendend)
@@ -118,7 +118,7 @@ Associates a name (i.e. IPv6 address and port) to the example TCP endpoint.
 Done
 ```
 
-### connect \<ip\> \<port\> [\<fastopen\>]
+### connect \<ip\> \<port\>
 
 Establishes a connection with the specified peer.
 
@@ -126,7 +126,6 @@ If the connection establishment is successful, the resulting TCP connection is a
 
 - ip: the peer's IP address.
 - port: the peer's TCP port.
-- fastopen: if "fast", TCP Fast Open is enabled for this connection; if "slow", it is not. Defaults to "slow".
 
 ```bash
 > tcp connect fe80:0:0:0:a8df:580a:860:ffa4 30000

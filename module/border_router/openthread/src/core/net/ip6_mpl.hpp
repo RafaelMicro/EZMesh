@@ -218,7 +218,7 @@ private:
     static constexpr uint16_t kNumSeedEntries      = OPENTHREAD_CONFIG_MPL_SEED_SET_ENTRIES;
     static constexpr uint32_t kSeedEntryLifetime   = OPENTHREAD_CONFIG_MPL_SEED_SET_ENTRY_LIFETIME;
     static constexpr uint32_t kSeedEntryLifetimeDt = 1000;
-    static constexpr uint16_t  kDataMessageInterval = 512;
+    static constexpr uint8_t  kDataMessageInterval = 64;
 
     struct SeedEntry
     {
@@ -243,7 +243,7 @@ private:
         void  ReadFrom(const Message &aMessage);
         void  RemoveFrom(Message &aMessage) const;
         void  UpdateIn(Message &aMessage) const;
-        void  GenerateNextTransmissionTime(TimeMilli aCurrentTime, uint16_t aInterval);
+        void  GenerateNextTransmissionTime(TimeMilli aCurrentTime, uint8_t aInterval);
 
         TimeMilli mTransmissionTime;
         uint16_t  mSeedId;

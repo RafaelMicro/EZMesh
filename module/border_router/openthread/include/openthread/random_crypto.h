@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include <mbedtls/ctr_drbg.h>
 #include <openthread/error.h>
 
 #ifdef __cplusplus

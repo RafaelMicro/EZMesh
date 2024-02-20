@@ -28,7 +28,9 @@
 
 #include <limits.h>
 
+#include "common/array.hpp"
 #include "common/encoding.hpp"
+#include "common/string.hpp"
 #include "net/ip4_types.hpp"
 #include "net/ip6_address.hpp"
 
@@ -36,7 +38,7 @@
 
 template <typename AddressType> struct TestVector
 {
-    const char *  mString;
+    const char   *mString;
     const uint8_t mAddr[sizeof(AddressType)];
     ot::Error     mError;
 };
@@ -166,6 +168,56 @@ void TestIp6AddressFromString(void)
     {
         checkAddressFromString(&testVector);
     }
+
+    // Validate parsing all test vectors now as an IPv6 prefix.
+
+    for (Ip6AddressTestVector &testVector : testVectors)
+    {
+        constexpr uint16_t kMaxString = 80;
+
+        ot::Ip6::Prefix prefix;
+        char            string[kMaxString];
+        uint16_t        length;
+
+        length = ot::StringLength(testVector.mString, kMaxString);
+        memcpy(string, testVector.mString, length);
+        VerifyOrQuit(length + sizeof("/128") <= kMaxString);
+        strcpy(&string[length], "/128");
+
+        printf("%s\n", string);
+
+        VerifyOrQuit(prefix.FromString(string) == testVector.mError);
+
+        if (testVector.mError == ot::kErrorNone)
+        {
+            VerifyOrQuit(memcmp(prefix.GetBytes(), testVector.mAddr, sizeof(ot::Ip6::Address)) == 0);
+            VerifyOrQuit(prefix.GetLength() == 128);
+        }
+    }
+}
+
+void TestIp6PrefixFromString(void)
+{
+    ot::Ip6::Prefix prefix;
+
+    SuccessOrQuit(prefix.FromString("::/128"));
+    VerifyOrQuit(prefix.GetLength() == 128);
+
+    SuccessOrQuit(prefix.FromString("::/0128"));
+    VerifyOrQuit(prefix.GetLength() == 128);
+
+    SuccessOrQuit(prefix.FromString("::/5"));
+    VerifyOrQuit(prefix.GetLength() == 5);
+
+    SuccessOrQuit(prefix.FromString("::/0"));
+    VerifyOrQuit(prefix.GetLength() == 0);
+
+    VerifyOrQuit(prefix.FromString("::") == ot::kErrorParse);
+    VerifyOrQuit(prefix.FromString("::/") == ot::kErrorParse);
+    VerifyOrQuit(prefix.FromString("::/129") == ot::kErrorParse);
+    VerifyOrQuit(prefix.FromString(":: /12") == ot::kErrorParse);
+    VerifyOrQuit(prefix.FromString("::/a1") == ot::kErrorParse);
+    VerifyOrQuit(prefix.FromString("::/12 ") == ot::kErrorParse);
 }
 
 void TestIp4AddressFromString(void)
@@ -191,6 +243,78 @@ void TestIp4AddressFromString(void)
     for (Ip4AddressTestVector &testVector : testVectors)
     {
         checkAddressFromString(&testVector);
+    }
+}
+
+struct CidrTestVector
+{
+    const char   *mString;
+    const uint8_t mAddr[sizeof(otIp4Address)];
+    const uint8_t mLength;
+    ot::Error     mError;
+};
+
+static void checkCidrFromString(CidrTestVector *aTestVector)
+{
+    ot::Error     error;
+    ot::Ip4::Cidr cidr;
+
+    cidr.Clear();
+
+    error = cidr.FromString(aTestVector->mString);
+
+    printf("%-42s -> %-42s\n", aTestVector->mString,
+           (error == ot::kErrorNone) ? cidr.ToString().AsCString() : "(parse error)");
+
+    VerifyOrQuit(error == aTestVector->mError, "Address::FromString returned unexpected error code");
+
+    if (error == ot::kErrorNone)
+    {
+        VerifyOrQuit(0 == memcmp(cidr.GetBytes(), aTestVector->mAddr, sizeof(aTestVector->mAddr)),
+                     "Cidr::FromString parsing failed");
+        VerifyOrQuit(cidr.mLength == aTestVector->mLength, "Cidr::FromString parsing failed");
+    }
+}
+
+void TestIp4CidrFromString(void)
+{
+    CidrTestVector testVectors[] = {
+        {"0.0.0.0/0", {0, 0, 0, 0}, 0, ot::kErrorNone},
+        {"255.255.255.255/32", {255, 255, 255, 255}, 32, ot::kErrorNone},
+        {"127.0.0.1/8", {127, 0, 0, 1}, 8, ot::kErrorNone},
+        {"1.2.3.4/24", {1, 2, 3, 4}, 24, ot::kErrorNone},
+        {"001.002.003.004/20", {1, 2, 3, 4}, 20, ot::kErrorNone},
+        {"00000127.000.000.000001/8", {127, 0, 0, 1}, 8, ot::kErrorNone},
+        // Valid suffix, invalid address
+        {"123.231.0.256/4", {0}, 0, ot::kErrorParse},    // Invalid byte value.
+        {"100123.231.0.256/4", {0}, 0, ot::kErrorParse}, // Invalid byte value.
+        {"1.22.33/4", {0}, 0, ot::kErrorParse},          // Too few bytes.
+        {"1.22.33.44.5/4", {0}, 0, ot::kErrorParse},     // Too many bytes.
+        {"a.b.c.d/4", {0}, 0, ot::kErrorParse},          // Wrong digit char.
+        {"123.23.45 .12/4", {0}, 0, ot::kErrorParse},    // Extra space.
+        {"./4", {0}, 0, ot::kErrorParse},                // Invalid.
+        // valid address, invalid suffix
+        {"1.2.3.4/33", {0}, 0, ot::kErrorParse},       // Prefix length too large
+        {"1.2.3.4/12345678", {0}, 0, ot::kErrorParse}, // Prefix length too large?
+        {"1.2.3.4/12a", {0}, 0, ot::kErrorParse},      // Extra char after prefix length.
+        {"1.2.3.4/-1", {0}, 0, ot::kErrorParse},       // Not even a non-negative integer.
+        {"1.2.3.4/3.14", {0}, 0, ot::kErrorParse},     // Not even a integer.
+        {"1.2.3.4/abcd", {0}, 0, ot::kErrorParse},     // Not even a number.
+        {"1.2.3.4/", {0}, 0, ot::kErrorParse},         // Where is the suffix?
+        {"1.2.3.4", {0}, 0, ot::kErrorParse},          // Where is the suffix?
+        // invalid address and invalid suffix
+        {"123.231.0.256/41", {0}, 0, ot::kErrorParse},     // Invalid byte value.
+        {"100123.231.0.256/abc", {0}, 0, ot::kErrorParse}, // Invalid byte value.
+        {"1.22.33", {0}, 0, ot::kErrorParse},              // Too few bytes.
+        {"1.22.33.44.5/36", {0}, 0, ot::kErrorParse},      // Too many bytes.
+        {"a.b.c.d/99", {0}, 0, ot::kErrorParse},           // Wrong digit char.
+        {"123.23.45 .12", {0}, 0, ot::kErrorParse},        // Extra space.
+        {".", {0}, 0, ot::kErrorParse},                    // Invalid.
+    };
+
+    for (CidrTestVector &testVector : testVectors)
+    {
+        checkCidrFromString(&testVector);
     }
 }
 
@@ -458,6 +582,182 @@ void TestIp6Prefix(void)
     VerifyOrQuit(!PrefixFrom("fe00::", 7).IsUniqueLocal());
 }
 
+void TestIp6PrefixTidy(void)
+{
+    struct TestVector
+    {
+        uint8_t     originalPrefix[OT_IP6_ADDRESS_SIZE];
+        const char *prefixStringAfterTidy[129];
+    };
+    const TestVector kPrefixes[] = {
+        {
+            .originalPrefix = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                               0xff},
+            .prefixStringAfterTidy =
+                {
+                    "::/0",
+                    "8000::/1",
+                    "c000::/2",
+                    "e000::/3",
+                    "f000::/4",
+                    "f800::/5",
+                    "fc00::/6",
+                    "fe00::/7",
+                    "ff00::/8",
+                    "ff80::/9",
+                    "ffc0::/10",
+                    "ffe0::/11",
+                    "fff0::/12",
+                    "fff8::/13",
+                    "fffc::/14",
+                    "fffe::/15",
+                    "ffff::/16",
+                    "ffff:8000::/17",
+                    "ffff:c000::/18",
+                    "ffff:e000::/19",
+                    "ffff:f000::/20",
+                    "ffff:f800::/21",
+                    "ffff:fc00::/22",
+                    "ffff:fe00::/23",
+                    "ffff:ff00::/24",
+                    "ffff:ff80::/25",
+                    "ffff:ffc0::/26",
+                    "ffff:ffe0::/27",
+                    "ffff:fff0::/28",
+                    "ffff:fff8::/29",
+                    "ffff:fffc::/30",
+                    "ffff:fffe::/31",
+                    "ffff:ffff::/32",
+                    "ffff:ffff:8000::/33",
+                    "ffff:ffff:c000::/34",
+                    "ffff:ffff:e000::/35",
+                    "ffff:ffff:f000::/36",
+                    "ffff:ffff:f800::/37",
+                    "ffff:ffff:fc00::/38",
+                    "ffff:ffff:fe00::/39",
+                    "ffff:ffff:ff00::/40",
+                    "ffff:ffff:ff80::/41",
+                    "ffff:ffff:ffc0::/42",
+                    "ffff:ffff:ffe0::/43",
+                    "ffff:ffff:fff0::/44",
+                    "ffff:ffff:fff8::/45",
+                    "ffff:ffff:fffc::/46",
+                    "ffff:ffff:fffe::/47",
+                    "ffff:ffff:ffff::/48",
+                    "ffff:ffff:ffff:8000::/49",
+                    "ffff:ffff:ffff:c000::/50",
+                    "ffff:ffff:ffff:e000::/51",
+                    "ffff:ffff:ffff:f000::/52",
+                    "ffff:ffff:ffff:f800::/53",
+                    "ffff:ffff:ffff:fc00::/54",
+                    "ffff:ffff:ffff:fe00::/55",
+                    "ffff:ffff:ffff:ff00::/56",
+                    "ffff:ffff:ffff:ff80::/57",
+                    "ffff:ffff:ffff:ffc0::/58",
+                    "ffff:ffff:ffff:ffe0::/59",
+                    "ffff:ffff:ffff:fff0::/60",
+                    "ffff:ffff:ffff:fff8::/61",
+                    "ffff:ffff:ffff:fffc::/62",
+                    "ffff:ffff:ffff:fffe::/63",
+                    "ffff:ffff:ffff:ffff::/64",
+                    "ffff:ffff:ffff:ffff:8000::/65",
+                    "ffff:ffff:ffff:ffff:c000::/66",
+                    "ffff:ffff:ffff:ffff:e000::/67",
+                    "ffff:ffff:ffff:ffff:f000::/68",
+                    "ffff:ffff:ffff:ffff:f800::/69",
+                    "ffff:ffff:ffff:ffff:fc00::/70",
+                    "ffff:ffff:ffff:ffff:fe00::/71",
+                    "ffff:ffff:ffff:ffff:ff00::/72",
+                    "ffff:ffff:ffff:ffff:ff80::/73",
+                    "ffff:ffff:ffff:ffff:ffc0::/74",
+                    "ffff:ffff:ffff:ffff:ffe0::/75",
+                    "ffff:ffff:ffff:ffff:fff0::/76",
+                    "ffff:ffff:ffff:ffff:fff8::/77",
+                    "ffff:ffff:ffff:ffff:fffc::/78",
+                    "ffff:ffff:ffff:ffff:fffe::/79",
+                    "ffff:ffff:ffff:ffff:ffff::/80",
+                    "ffff:ffff:ffff:ffff:ffff:8000::/81",
+                    "ffff:ffff:ffff:ffff:ffff:c000::/82",
+                    "ffff:ffff:ffff:ffff:ffff:e000::/83",
+                    "ffff:ffff:ffff:ffff:ffff:f000::/84",
+                    "ffff:ffff:ffff:ffff:ffff:f800::/85",
+                    "ffff:ffff:ffff:ffff:ffff:fc00::/86",
+                    "ffff:ffff:ffff:ffff:ffff:fe00::/87",
+                    "ffff:ffff:ffff:ffff:ffff:ff00::/88",
+                    "ffff:ffff:ffff:ffff:ffff:ff80::/89",
+                    "ffff:ffff:ffff:ffff:ffff:ffc0::/90",
+                    "ffff:ffff:ffff:ffff:ffff:ffe0::/91",
+                    "ffff:ffff:ffff:ffff:ffff:fff0::/92",
+                    "ffff:ffff:ffff:ffff:ffff:fff8::/93",
+                    "ffff:ffff:ffff:ffff:ffff:fffc::/94",
+                    "ffff:ffff:ffff:ffff:ffff:fffe::/95",
+                    "ffff:ffff:ffff:ffff:ffff:ffff::/96",
+                    // Note: The result of /97 to /112 does not meet RFC requirements:
+                    // 4.2.2.  Handling One 16-Bit 0 Field
+                    // The symbol "::" MUST NOT be used to shorten just one 16-bit 0 field.
+                    "ffff:ffff:ffff:ffff:ffff:ffff:8000::/97",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:c000::/98",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:e000::/99",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:f000::/100",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:f800::/101",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:fc00::/102",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:fe00::/103",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ff00::/104",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ff80::/105",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffc0::/106",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffe0::/107",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:fff0::/108",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:fff8::/109",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:fffc::/110",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:fffe::/111",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff::/112",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:8000/113",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:c000/114",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:e000/115",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:f000/116",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:f800/117",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fc00/118",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fe00/119",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ff00/120",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ff80/121",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffc0/122",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffe0/123",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff0/124",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff8/125",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffc/126",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe/127",
+                    "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128",
+                },
+        },
+    };
+
+    printf("Tidy Prefixes:\n");
+
+    for (auto test : kPrefixes)
+    {
+        for (uint16_t i = 0; i < ot::GetArrayLength(test.prefixStringAfterTidy); i++)
+        {
+            ot::Ip6::Prefix prefix, answer;
+
+            SuccessOrQuit(answer.FromString(test.prefixStringAfterTidy[i]));
+            prefix.Set(test.originalPrefix, i);
+            prefix.Tidy();
+
+            {
+                ot::Ip6::Prefix::InfoString prefixString = prefix.ToString();
+
+                printf("Prefix: %-36s  TidyResult: %-36s\n", test.prefixStringAfterTidy[i],
+                       prefix.ToString().AsCString());
+
+                VerifyOrQuit(memcmp(answer.mPrefix.mFields.m8, prefix.mPrefix.mFields.m8,
+                                    sizeof(answer.mPrefix.mFields.m8)) == 0);
+                VerifyOrQuit(prefix.mLength == answer.mLength);
+                VerifyOrQuit(strcmp(test.prefixStringAfterTidy[i], prefixString.AsCString()) == 0);
+            }
+        }
+    }
+}
+
 void TestIp4Ip6Translation(void)
 {
     struct TestCase
@@ -467,7 +767,7 @@ void TestIp4Ip6Translation(void)
         const char *mIp6Address; // Expected IPv6 address (with embedded IPv4 "192.0.2.33").
     };
 
-    // The test cases are from RFC 6502 - section 2.4
+    // The test cases are from RFC 6052 - section 2.4
 
     const TestCase kTestCases[] = {
         {"2001:db8::", 32, "2001:db8:c000:221::"},
@@ -529,10 +829,10 @@ void TestIp4Cidr(void)
     using ot::Encoding::BigEndian::HostSwap32;
     struct TestCase
     {
-        const char *   mNetwork;
+        const char    *mNetwork;
         const uint8_t  mLength;
         const uint32_t mHost;
-        const char *   mOutcome;
+        const char    *mOutcome;
     };
 
     const TestCase kTestCases[] = {
@@ -580,9 +880,12 @@ int main(void)
     TestIp6AddressSetPrefix();
     TestIp4AddressFromString();
     TestIp6AddressFromString();
+    TestIp6PrefixFromString();
     TestIp6Prefix();
+    TestIp6PrefixTidy();
     TestIp4Ip6Translation();
     TestIp4Cidr();
+    TestIp4CidrFromString();
     printf("All tests passed\n");
     return 0;
 }

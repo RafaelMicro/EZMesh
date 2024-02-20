@@ -46,6 +46,7 @@
 #include "common/logging.hpp"
 #include "web/web-service/web_server.hpp"
 
+static const char kSyslogIdent[]          = "otbr-web";
 static const char kDefaultInterfaceName[] = "wpan0";
 static const char kDefaultListenAddr[]    = "::";
 
@@ -111,7 +112,7 @@ int main(int argc, char **argv)
         }
     }
 
-    otbrLogInit(argv[0], logLevel, true);
+    otbrLogInit(kSyslogIdent, logLevel, true);
     otbrLogInfo("Running %s", OTBR_PACKAGE_VERSION);
 
     if (interfaceName == nullptr)

@@ -168,10 +168,7 @@ Error Client::Response::CheckForHostNameAlias(Section aSection, Name &aHostName)
 {
     // If the response includes a CNAME record mapping the query host
     // name to a canonical name, we update `aHostName` to the new alias
-    // name. Otherwise `aHostName` remains as before. This method handles
-    // when there are multiple CNAME records mapping the host name multiple
-    // times. We limit number of changes to `kMaxCnameAliasNameChanges`
-    // to detect and handle if the response contains CNAME record loops.
+    // name. Otherwise `aHostName` remains as before.
 
     Error       error;
     uint16_t    offset;
@@ -180,31 +177,26 @@ Error Client::Response::CheckForHostNameAlias(Section aSection, Name &aHostName)
 
     VerifyOrExit(mMessage != nullptr, error = kErrorNotFound);
 
-    for (uint16_t counter = 0; counter < kMaxCnameAliasNameChanges; counter++)
+    SelectSection(aSection, offset, numRecords);
+    error = ResourceRecord::FindRecord(*mMessage, offset, numRecords, /* aIndex */ 0, aHostName, cnameRecord);
+
+    switch (error)
     {
-        SelectSection(aSection, offset, numRecords);
-        error = ResourceRecord::FindRecord(*mMessage, offset, numRecords, /* aIndex */ 0, aHostName, cnameRecord);
-
-        if (error == kErrorNotFound)
-        {
-            error = kErrorNone;
-            ExitNow();
-        }
-
-        SuccessOrExit(error);
-
+    case kErrorNone:
         // A CNAME record was found. `offset` now points to after the
         // last read byte within the `mMessage` into the `cnameRecord`
         // (which is the start of the new canonical name).
-
         aHostName.SetFromMessage(*mMessage, offset);
-        SuccessOrExit(error = Name::ParseName(*mMessage, offset));
+        error = Name::ParseName(*mMessage, offset);
+        break;
 
-        // Loop back to check if there may be a CNAME record for the
-        // new `aHostName`.
+    case kErrorNotFound:
+        error = kErrorNone;
+        break;
+
+    default:
+        break;
     }
-
-    error = kErrorParse;
 
 exit:
     return error;

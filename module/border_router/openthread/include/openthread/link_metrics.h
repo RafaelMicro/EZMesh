@@ -118,7 +118,7 @@ typedef enum otLinkMetricsStatus
  */
 typedef void (*otLinkMetricsReportCallback)(const otIp6Address        *aSource,
                                             const otLinkMetricsValues *aMetricsValues,
-                                            otLinkMetricsStatus        aStatus,
+                                            uint8_t                    aStatus,
                                             void                      *aContext);
 /**
  * Pointer is called when a Link Metrics Management Response is received.
@@ -128,9 +128,7 @@ typedef void (*otLinkMetricsReportCallback)(const otIp6Address        *aSource,
  * @param[in]  aContext        A pointer to application-specific context.
  *
  */
-typedef void (*otLinkMetricsMgmtResponseCallback)(const otIp6Address *aSource,
-                                                  otLinkMetricsStatus aStatus,
-                                                  void               *aContext);
+typedef void (*otLinkMetricsMgmtResponseCallback)(const otIp6Address *aSource, uint8_t aStatus, void *aContext);
 
 /**
  * Pointer is called when Enh-ACK Probing IE is received.

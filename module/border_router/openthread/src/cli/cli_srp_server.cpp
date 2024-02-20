@@ -270,6 +270,9 @@ void SrpServer::OutputHostAddresses(const otSrpServerHost *aHost)
 
 template <> otError SrpServer::Process<Cmd("service")>(Arg aArgs[])
 {
+    static constexpr char *kAnyServiceName  = nullptr;
+    static constexpr char *kAnyInstanceName = nullptr;
+
     otError                error = OT_ERROR_NONE;
     const otSrpServerHost *host  = nullptr;
 
@@ -279,15 +282,18 @@ template <> otError SrpServer::Process<Cmd("service")>(Arg aArgs[])
     {
         const otSrpServerService *service = nullptr;
 
-        while ((service = otSrpServerHostGetNextService(host, service)) != nullptr)
+        while ((service = otSrpServerHostFindNextService(host, service, OT_SRP_SERVER_FLAGS_BASE_TYPE_SERVICE_ONLY,
+                                                         kAnyServiceName, kAnyInstanceName)) != nullptr)
         {
-            bool                 isDeleted = otSrpServerServiceIsDeleted(service);
-            const uint8_t       *txtData;
-            uint16_t             txtDataLength;
-            bool                 hasSubType = false;
-            otSrpServerLeaseInfo leaseInfo;
+            bool                      isDeleted    = otSrpServerServiceIsDeleted(service);
+            const char               *instanceName = otSrpServerServiceGetInstanceName(service);
+            const otSrpServerService *subService   = nullptr;
+            const uint8_t            *txtData;
+            uint16_t                  txtDataLength;
+            bool                      hasSubType = false;
+            otSrpServerLeaseInfo      leaseInfo;
 
-            OutputLine("%s", otSrpServerServiceGetInstanceName(service));
+            OutputLine("%s", instanceName);
             OutputLine(kIndentSize, "deleted: %s", isDeleted ? "true" : "false");
 
             if (isDeleted)
@@ -299,17 +305,13 @@ template <> otError SrpServer::Process<Cmd("service")>(Arg aArgs[])
 
             OutputFormat(kIndentSize, "subtypes: ");
 
-            for (uint16_t index = 0;; index++)
+            while ((subService = otSrpServerHostFindNextService(
+                        host, subService, (OT_SRP_SERVER_SERVICE_FLAG_SUB_TYPE | OT_SRP_SERVER_SERVICE_FLAG_ACTIVE),
+                        kAnyServiceName, instanceName)) != nullptr)
             {
-                char        subLabel[OT_DNS_MAX_LABEL_SIZE];
-                const char *subTypeName = otSrpServerServiceGetSubTypeServiceNameAt(service, index);
+                char subLabel[OT_DNS_MAX_LABEL_SIZE];
 
-                if (subTypeName == nullptr)
-                {
-                    break;
-                }
-
-                IgnoreError(otSrpServerParseSubTypeServiceName(subTypeName, subLabel, sizeof(subLabel)));
+                IgnoreError(otSrpServerServiceGetServiceSubTypeLabel(subService, subLabel, sizeof(subLabel)));
                 OutputFormat("%s%s", hasSubType ? "," : "", subLabel);
                 hasSubType = true;
             }

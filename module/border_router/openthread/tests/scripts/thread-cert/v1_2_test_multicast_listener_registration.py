@@ -838,6 +838,7 @@ class TestMulticastListenerRegistration(thread_cert.TestCase):
         # Turn off Router 1.1 and turn on Router 1.2
         self.nodes[ROUTER_1_1].stop()
         self.nodes[ROUTER_1_2].start()
+        self.simulator.go(config.ROUTER_RESET_DELAY)
         for id in [FED_1, MED_1, SED_1]:
             self.simulator.go(config.DEFAULT_CHILD_TIMEOUT + WAIT_REDUNDANCE)
 
@@ -890,7 +891,7 @@ class TestMulticastListenerRegistration(thread_cert.TestCase):
         self.simulator.go(WAIT_REDUNDANCE)
         self.__check_send_mlr_req(parent_id, MA1, should_send=True, expect_mlr_rsp=True)
 
-        # Parent should not register MA1 of Child 1 because it's already registerd
+        # Parent should not register MA1 of Child 1 because it's already registered
         self.flush_all()
         self.nodes[meds[0]].add_ipmaddr(MA1)
         self.simulator.go(PARENT_AGGREGATE_DELAY + WAIT_REDUNDANCE)

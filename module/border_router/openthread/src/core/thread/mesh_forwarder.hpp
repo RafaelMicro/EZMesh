@@ -311,55 +311,6 @@ public:
      */
     void ResetCounters(void) { memset(&mIpCounters, 0, sizeof(mIpCounters)); }
 
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-    /**
-     * Gets the time-in-queue histogram for messages in the TX queue.
-     *
-     * Histogram of the time-in-queue of messages in the transmit queue is collected. The time-in-queue is tracked for
-     * direct transmissions only and is measured as the duration from when a message is added to the transmit queue
-     * until it is passed to the MAC layer for transmission or dropped.
-     *
-     * The histogram is returned as an array of `uint32_t` values with `aNumBins` entries. The first entry in the array
-     * (at index 0) represents the number of messages with a time-in-queue less than `aBinInterval`. The second entry
-     * represents the number of messages with a time-in-queue greater than or equal to `aBinInterval`, but less than
-     * `2 * aBinInterval`. And so on. The last entry represents the number of messages with time-in-queue  greater than
-     * or * equal to `(aNumBins - 1) * aBinInterval`.
-     *
-     * The collected statistics can be reset by calling `ResetTimeInQueueStat()`. The histogram information is
-     * collected since the OpenThread instance was initialized or since the last time statistics collection was reset
-     * by calling the `ResetTimeInQueueStat()`.
-     *
-     * @param[out] aNumBins       Reference to return the number of bins in histogram (array length).
-     * @param[out] aBinInterval   Reference to return the histogram bin interval length in milliseconds.
-     *
-     * @returns A pointer to an array of @p aNumBins entries representing the collected histogram info.
-     *
-     */
-    const uint32_t *GetTimeInQueueHistogram(uint16_t &aNumBins, uint32_t &aBinInterval) const
-    {
-        return mTxQueueStats.GetHistogram(aNumBins, aBinInterval);
-    }
-
-    /**
-     * Gets the maximum time-in-queue for messages in the TX queue.
-     *
-     * The time-in-queue is tracked for direct transmissions only and is measured as the duration from when a message
-     * is added to the transmit queue until it is passed to the MAC layer for transmission or dropped.
-     *
-     * The collected statistics can be reset by calling `ResetTimeInQueueStat()`.
-     *
-     * @returns The maximum time-in-queue in milliseconds for all messages in the TX queue (so far).
-     *
-     */
-    uint32_t GetMaxTimeInQueue(void) const { return mTxQueueStats.GetMaxInterval(); }
-
-    /**
-     * Resets the TX queue time-in-queue statistics.
-     *
-     */
-    void ResetTimeInQueueStat(void) { mTxQueueStats.Clear(); }
-#endif
-
 #if OPENTHREAD_CONFIG_RADIO_LINK_TREL_ENABLE
     /**
      * Handles a deferred ack.
@@ -379,9 +330,6 @@ public:
 #endif
 
 private:
-    static constexpr uint8_t kFailedRouterTransmissions      = 4;
-    static constexpr uint8_t kFailedCslDataPollTransmissions = 15;
-
     static constexpr uint8_t kReassemblyTimeout      = OPENTHREAD_CONFIG_6LOWPAN_REASSEMBLY_TIMEOUT; // in seconds.
     static constexpr uint8_t kMeshHeaderFrameMtu     = OT_RADIO_FRAME_MAX_SIZE; // Max MTU with a Mesh Header frame.
     static constexpr uint8_t kMeshHeaderFrameFcsSize = sizeof(uint16_t);        // Frame FCS size for Mesh Header frame.
@@ -484,24 +432,6 @@ private:
     };
 #endif // OPENTHREAD_FTD
 
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-    class TxQueueStats : public Clearable<TxQueueStats>
-    {
-    public:
-        const uint32_t *GetHistogram(uint16_t &aNumBins, uint32_t &aBinInterval) const;
-        uint32_t        GetMaxInterval(void) const { return mMaxInterval; }
-        void            UpdateFor(const Message &aMessage);
-
-    private:
-        static constexpr uint32_t kHistMaxInterval = OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_HISTOGRAM_MAX_INTERVAL;
-        static constexpr uint32_t kHistBinInterval = OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_HISTOGRAM_BIN_INTERVAL;
-        static constexpr uint16_t kNumHistBins     = (kHistMaxInterval + kHistBinInterval - 1) / kHistBinInterval;
-
-        uint32_t mMaxInterval;
-        uint32_t mHistogram[kNumHistBins];
-    };
-#endif
-
     void     SendIcmpErrorIfDstUnreach(const Message &aMessage, const Mac::Addresses &aMacAddrs);
     Error    CheckReachability(const FrameData &aFrameData, const Mac::Addresses &aMeshAddrs);
     void     UpdateRoutes(const FrameData &aFrameData, const Mac::Addresses &aMeshAddrs);
@@ -516,25 +446,25 @@ private:
     void     HandleFragment(FrameData &aFrameData, const Mac::Addresses &aMacAddrs, const ThreadLinkInfo &aLinkInfo);
     void HandleLowpanHC(const FrameData &aFrameData, const Mac::Addresses &aMacAddrs, const ThreadLinkInfo &aLinkInfo);
 
-    void     PrepareMacHeaders(Mac::TxFrame             &aFrame,
-                               Mac::Frame::Type          aFrameType,
-                               const Mac::Addresses     &aMacAddr,
-                               const Mac::PanIds        &aPanIds,
-                               Mac::Frame::SecurityLevel aSecurityLevel,
-                               Mac::Frame::KeyIdMode     aKeyIdMode,
-                               const Message            *aMessage);
+    void PrepareMacHeaders(Mac::TxFrame             &aFrame,
+                           Mac::Frame::Type          aFrameType,
+                           const Mac::Addresses     &aMacAddr,
+                           const Mac::PanIds        &aPanIds,
+                           Mac::Frame::SecurityLevel aSecurityLevel,
+                           Mac::Frame::KeyIdMode     aKeyIdMode,
+                           const Message            *aMessage);
+
     uint16_t PrepareDataFrame(Mac::TxFrame         &aFrame,
                               Message              &aMessage,
                               const Mac::Addresses &aMacAddrs,
-                              bool                  aAddMeshHeader,
-                              uint16_t              aMeshSource,
-                              uint16_t              aMeshDest,
-                              bool                  aAddFragHeader);
-    uint16_t PrepareDataFrameWithNoMeshHeader(Mac::TxFrame &aFrame, Message &aMessage, const Mac::Addresses &aMacAddrs);
+                              bool                  aAddMeshHeader = false,
+                              uint16_t              aMeshSource    = 0xffff,
+                              uint16_t              aMeshDest      = 0xffff,
+                              bool                  aAddFragHeader = false);
     void     PrepareEmptyFrame(Mac::TxFrame &aFrame, const Mac::Address &aMacDest, bool aAckRequest);
 
 #if OPENTHREAD_CONFIG_DELAY_AWARE_QUEUE_MANAGEMENT_ENABLE
-    Error UpdateEcnOrDrop(Message &aMessage, bool aPreparingToSend);
+    Error UpdateEcnOrDrop(Message &aMessage, bool aPreparingToSend = true);
     Error RemoveAgedMessages(void);
 #endif
 #if (OPENTHREAD_CONFIG_MAX_FRAMES_IN_DIRECT_TX_QUEUE > 0)
@@ -563,11 +493,14 @@ private:
     Neighbor     *UpdateNeighborOnSentFrame(Mac::TxFrame       &aFrame,
                                             Error               aError,
                                             const Mac::Address &aMacDest,
-                                            bool                aIsDataPoll);
-    void UpdateNeighborLinkFailures(Neighbor &aNeighbor, Error aError, bool aAllowNeighborRemove, uint8_t aFailLimit);
-    void HandleSentFrame(Mac::TxFrame &aFrame, Error aError);
-    void UpdateSendMessage(Error aFrameTxError, Mac::Address &aMacDest, Neighbor *aNeighbor);
-    void RemoveMessageIfNoPendingTx(Message &aMessage);
+                                            bool                aIsDataPoll = false);
+    void          UpdateNeighborLinkFailures(Neighbor &aNeighbor,
+                                             Error     aError,
+                                             bool      aAllowNeighborRemove,
+                                             uint8_t   aFailLimit = Mle::kFailedRouterTransmissions);
+    void          HandleSentFrame(Mac::TxFrame &aFrame, Error aError);
+    void          UpdateSendMessage(Error aFrameTxError, Mac::Address &aMacDest, Neighbor *aNeighbor);
+    void          RemoveMessageIfNoPendingTx(Message &aMessage);
 
     void HandleTimeTick(void);
     void ScheduleTransmissionTask(void);
@@ -593,9 +526,10 @@ private:
     void HandleTxDelayTimer(void);
 #endif
 
-    void LogMessage(MessageAction aAction, const Message &aMessage);
-    void LogMessage(MessageAction aAction, const Message &aMessage, Error aError);
-    void LogMessage(MessageAction aAction, const Message &aMessage, Error aError, const Mac::Address *aAddress);
+    void LogMessage(MessageAction       aAction,
+                    const Message      &aMessage,
+                    Error               aError   = kErrorNone,
+                    const Mac::Address *aAddress = nullptr);
     void LogFrame(const char *aActionText, const Mac::Frame &aFrame, Error aError);
     void LogFragmentFrameDrop(Error                         aError,
                               uint16_t                      aFrameLength,
@@ -669,10 +603,6 @@ private:
 #endif
 
     DataPollSender mDataPollSender;
-
-#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
-    TxQueueStats mTxQueueStats;
-#endif
 };
 
 /**

@@ -66,7 +66,7 @@ namespace Mle {
 
 RegisterLogModule("Mle");
 
-const otMeshLocalPrefix Mle::kMeshLocalPrefixInit = {
+const otMeshLocalPrefix Mle::sMeshLocalPrefixInit = {
     {0xfd, 0xde, 0xad, 0x00, 0xbe, 0xef, 0x00, 0x00},
 };
 
@@ -74,43 +74,42 @@ Mle::Mle(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mRetrieveNewNetworkData(false)
     , mRequestRouteTlv(false)
-    , mHasRestored(false)
-    , mReceivedResponseFromParent(false)
-    , mInitiallyAttachedAsSleepy(false)
-#if OPENTHREAD_FTD
-    , mWasLeader(false)
-#endif
     , mRole(kRoleDisabled)
+    , mNeighborTable(aInstance)
     , mDeviceMode(DeviceMode::kModeRxOnWhenIdle)
     , mAttachState(kAttachStateIdle)
     , mReattachState(kReattachStop)
-    , mAttachMode(kAnyPartition)
-    , mDataRequestState(kDataRequestNone)
-    , mAddressRegistrationMode(kAppendAllAddresses)
-    , mChildUpdateRequestState(kChildUpdateRequestNone)
-    , mParentRequestCounter(0)
-    , mChildUpdateAttempts(0)
-    , mDataRequestAttempts(0)
-    , mAnnounceChannel(0)
-    , mAlternateChannel(0)
-    , mRloc16(Mac::kShortAddrInvalid)
-    , mPreviousParentRloc(Mac::kShortAddrInvalid)
     , mAttachCounter(0)
     , mAnnounceDelay(kAnnounceTimeout)
-    , mAlternatePanId(Mac::kPanIdBroadcast)
-    , mTimeout(kDefaultChildTimeout)
-#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-    , mCslTimeout(kDefaultCslTimeout)
-#endif
-    , mAlternateTimestamp(0)
-    , mNeighborTable(aInstance)
-    , mSocket(aInstance)
-#if OPENTHREAD_CONFIG_PARENT_SEARCH_ENABLE
-    , mParentSearch(aInstance)
-#endif
     , mAttachTimer(aInstance)
     , mDelayedResponseTimer(aInstance)
     , mMessageTransmissionTimer(aInstance)
+#if OPENTHREAD_FTD
+    , mWasLeader(false)
+#endif
+    , mAttachMode(kAnyPartition)
+    , mChildUpdateAttempts(0)
+    , mChildUpdateRequestState(kChildUpdateRequestNone)
+    , mDataRequestAttempts(0)
+    , mDataRequestState(kDataRequestNone)
+    , mAddressRegistrationMode(kAppendAllAddresses)
+    , mHasRestored(false)
+    , mReceivedResponseFromParent(false)
+    , mInitiallyAttachedAsSleepy(false)
+    , mSocket(aInstance)
+    , mTimeout(kMleEndDeviceTimeout)
+#if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
+    , mCslTimeout(kDefaultCslTimeout)
+#endif
+    , mRloc16(Mac::kShortAddrInvalid)
+    , mPreviousParentRloc(Mac::kShortAddrInvalid)
+#if OPENTHREAD_CONFIG_PARENT_SEARCH_ENABLE
+    , mParentSearch(aInstance)
+#endif
+    , mAnnounceChannel(0)
+    , mAlternateChannel(0)
+    , mAlternatePanId(Mac::kPanIdBroadcast)
+    , mAlternateTimestamp(0)
     , mDetachGracefullyTimer(aInstance)
 {
     mParent.Init(aInstance);
@@ -141,7 +140,7 @@ Mle::Mle(Instance &aInstance)
     mRealmLocalAllThreadNodes.GetAddress().mFields.m16[0] = HostSwap16(0xff33);
     mRealmLocalAllThreadNodes.GetAddress().mFields.m16[7] = HostSwap16(0x0001);
 
-    SetMeshLocalPrefix(AsCoreType(&kMeshLocalPrefixInit));
+    SetMeshLocalPrefix(AsCoreType(&sMeshLocalPrefixInit));
 
     // `SetMeshLocalPrefix()` also adds the Mesh-Local EID and subscribes
     // to the Link- and Realm-Local All Thread Nodes multicast addresses.
@@ -782,13 +781,6 @@ exit:
 
 void Mle::SetTimeout(uint32_t aTimeout)
 {
-    // Determine `kMinTimeout` based on other parameters
-    static constexpr uint32_t kMinPollPeriod       = OPENTHREAD_CONFIG_MAC_MINIMUM_POLL_PERIOD;
-    static constexpr uint32_t kRetxPollPeriod      = OPENTHREAD_CONFIG_MAC_RETX_POLL_PERIOD;
-    static constexpr uint32_t kMinTimeoutDataPoll  = kMinPollPeriod + kFailedChildTransmissions * kRetxPollPeriod;
-    static constexpr uint32_t kMinTimeoutKeepAlive = (kMaxChildKeepAliveAttempts + 1) * kUnicastRetxDelay;
-    static constexpr uint32_t kMinTimeout          = Time::MsecToSec(OT_MAX(kMinTimeoutKeepAlive, kMinTimeoutDataPoll));
-
     aTimeout = Max(aTimeout, kMinTimeout);
 
     VerifyOrExit(mTimeout != aTimeout);
@@ -1809,7 +1801,7 @@ Error Mle::SendChildIdRequest(void)
     }
 
     VerifyOrExit((message = NewMleMessage(kCommandChildIdRequest)) != nullptr, error = kErrorNoBufs);
-    SuccessOrExit(error = message->AppendResponseTlv(mParentCandidate.mRxChallenge));
+    SuccessOrExit(error = message->AppendResponseTlv(mParentCandidate.mChallenge));
     SuccessOrExit(error = message->AppendLinkFrameCounterTlv());
     SuccessOrExit(error = message->AppendMleFrameCounterTlv());
     SuccessOrExit(error = message->AppendModeTlv(mDeviceMode));
@@ -1939,7 +1931,8 @@ void Mle::ScheduleMessageTransmissionTimer(void)
 #if OPENTHREAD_FTD
     if (mRole == kRoleDetached && mLinkRequestAttempts > 0)
     {
-        ExitNow(interval = Random::NonCrypto::GetUint32InRange(kMulticastRetxDelayMin, kMulticastRetxDelayMax));
+        ExitNow(interval = Random::NonCrypto::GetUint32InRange(kMulticastTransmissionDelayMin,
+                                                               kMulticastTransmissionDelayMax));
     }
 #endif
 
@@ -1955,12 +1948,12 @@ void Mle::ScheduleMessageTransmissionTimer(void)
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
         if (Get<Mac::Mac>().IsCslEnabled())
         {
-            ExitNow(interval = Get<Mac::Mac>().GetCslPeriodInMsec() + kUnicastRetxDelay);
+            ExitNow(interval = Get<Mac::Mac>().GetCslPeriodMs() + static_cast<uint32_t>(kUnicastRetransmissionDelay));
         }
         else
 #endif
         {
-            ExitNow(interval = kUnicastRetxDelay);
+            ExitNow(interval = kUnicastRetransmissionDelay);
         }
     }
 
@@ -1970,12 +1963,13 @@ void Mle::ScheduleMessageTransmissionTimer(void)
         break;
 
     case kDataRequestActive:
-        ExitNow(interval = kUnicastRetxDelay);
+        ExitNow(interval = kUnicastRetransmissionDelay);
     }
 
     if (IsChild() && IsRxOnWhenIdle())
     {
-        interval = Time::SecToMsec(mTimeout) - kUnicastRetxDelay * kMaxChildKeepAliveAttempts;
+        interval =
+            Time::SecToMsec(mTimeout) - static_cast<uint32_t>(kUnicastRetransmissionDelay) * kMaxChildKeepAliveAttempts;
     }
 
 exit:
@@ -2145,7 +2139,7 @@ exit:
     return error;
 }
 
-Error Mle::SendChildUpdateResponse(const TlvList &aTlvList, const RxChallenge &aChallenge)
+Error Mle::SendChildUpdateResponse(const TlvList &aTlvList, const Challenge &aChallenge)
 {
     Error        error = kErrorNone;
     Ip6::Address destination;
@@ -2663,7 +2657,47 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
         ExitNow(error = kErrorDrop);
     }
 
-    ProcessKeySequence(rxInfo);
+    // In case key sequence is larger, we determine whether to adopt it
+    // or not. The `Handle{MleMsg}()` methods set the `rxInfo.mClass`
+    // based on the message command type and the included TLVs. If
+    // there is any error during parsing of the message the `mClass`
+    // remains as its default value of `RxInfo::kUnknown`. Message
+    // classes are determined based on this:
+    //
+    // Authoritative : Larger key seq MUST be adopted.
+    // Peer          : If from a known neighbor
+    //                    If difference is 1, adopt
+    //                    Otherwise don't adopt and try to re-sync with
+    //                    neighbor.
+    //                 Otherwise larger key seq MUST NOT be adopted.
+
+    if (keySequence > Get<KeyManager>().GetCurrentKeySequence())
+    {
+        switch (rxInfo.mClass)
+        {
+        case RxInfo::kAuthoritativeMessage:
+            Get<KeyManager>().SetCurrentKeySequence(keySequence);
+            break;
+
+        case RxInfo::kPeerMessage:
+            if ((neighbor != nullptr) && neighbor->IsStateValid())
+            {
+                if (keySequence - Get<KeyManager>().GetCurrentKeySequence() == 1)
+                {
+                    Get<KeyManager>().SetCurrentKeySequence(keySequence);
+                }
+                else
+                {
+                    LogInfo("Large key seq jump in peer class msg from 0x%04x ", neighbor->GetRloc16());
+                    ReestablishLinkWithNeighbor(*neighbor);
+                }
+            }
+            break;
+
+        case RxInfo::kUnknown:
+            break;
+        }
+    }
 
 #if OPENTHREAD_CONFIG_MULTI_RADIO
     // If we could not find a neighbor matching the MAC address of the
@@ -2694,53 +2728,6 @@ exit:
     {
         LogProcessError(kTypeGenericUdp, error);
     }
-}
-
-void Mle::ProcessKeySequence(RxInfo &aRxInfo)
-{
-    // In case key sequence is larger, we determine whether to adopt it
-    // or not. The `Handle{MleMsg}()` methods set the `rxInfo.mClass`
-    // based on the message command type and the included TLVs. If
-    // there is any error during parsing of the message the `mClass`
-    // remains as its default value of `RxInfo::kUnknown`. Message
-    // classes are determined based on this:
-    //
-    // Authoritative : Larger key seq MUST be adopted.
-    // Peer          : If from a known neighbor
-    //                    If difference is 1, adopt
-    //                    Otherwise don't adopt and try to re-sync with
-    //                    neighbor.
-    //                 Otherwise larger key seq MUST NOT be adopted.
-
-    VerifyOrExit(aRxInfo.mKeySequence > Get<KeyManager>().GetCurrentKeySequence());
-
-    switch (aRxInfo.mClass)
-    {
-    case RxInfo::kAuthoritativeMessage:
-        Get<KeyManager>().SetCurrentKeySequence(aRxInfo.mKeySequence);
-        break;
-
-    case RxInfo::kPeerMessage:
-        if ((aRxInfo.mNeighbor != nullptr) && aRxInfo.mNeighbor->IsStateValid())
-        {
-            if (aRxInfo.mKeySequence - Get<KeyManager>().GetCurrentKeySequence() == 1)
-            {
-                Get<KeyManager>().SetCurrentKeySequence(aRxInfo.mKeySequence);
-            }
-            else
-            {
-                LogInfo("Large key seq jump in peer class msg from 0x%04x ", aRxInfo.mNeighbor->GetRloc16());
-                ReestablishLinkWithNeighbor(*aRxInfo.mNeighbor);
-            }
-        }
-        break;
-
-    case RxInfo::kUnknown:
-        break;
-    }
-
-exit:
-    return;
 }
 
 void Mle::ReestablishLinkWithNeighbor(Neighbor &aNeighbor)
@@ -3124,7 +3111,7 @@ void Mle::HandleParentResponse(RxInfo &aRxInfo)
 {
     Error            error = kErrorNone;
     int8_t           rss   = aRxInfo.mMessageInfo.GetThreadLinkInfo()->GetRss();
-    RxChallenge      response;
+    Challenge        response;
     uint16_t         version;
     uint16_t         sourceAddress;
     LeaderData       leaderData;
@@ -3294,7 +3281,7 @@ void Mle::HandleParentResponse(RxInfo &aRxInfo)
 #endif // OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
 
     // Challenge
-    SuccessOrExit(error = aRxInfo.mMessage.ReadChallengeTlv(mParentCandidate.mRxChallenge));
+    SuccessOrExit(error = aRxInfo.mMessage.ReadChallengeTlv(mParentCandidate.mChallenge));
 
     InitNeighbor(mParentCandidate, aRxInfo);
     mParentCandidate.SetRloc16(sourceAddress);
@@ -3453,11 +3440,11 @@ exit:
 
 void Mle::HandleChildUpdateRequest(RxInfo &aRxInfo)
 {
-    Error       error = kErrorNone;
-    uint16_t    sourceAddress;
-    RxChallenge challenge;
-    TlvList     requestedTlvList;
-    TlvList     tlvList;
+    Error     error = kErrorNone;
+    uint16_t  sourceAddress;
+    Challenge challenge;
+    TlvList   requestedTlvList;
+    TlvList   tlvList;
 
     // Source Address
     SuccessOrExit(error = Tlv::Find<SourceAddressTlv>(aRxInfo.mMessage, sourceAddress));
@@ -3473,7 +3460,7 @@ void Mle::HandleChildUpdateRequest(RxInfo &aRxInfo)
         tlvList.Add(Tlv::kLinkFrameCounter);
         break;
     case kErrorNotFound:
-        challenge.Clear();
+        challenge.mLength = 0;
         break;
     default:
         ExitNow(error = kErrorParse);
@@ -3534,10 +3521,9 @@ void Mle::HandleChildUpdateRequest(RxInfo &aRxInfo)
     }
 
     aRxInfo.mClass = RxInfo::kPeerMessage;
-    ProcessKeySequence(aRxInfo);
 
 #if OPENTHREAD_CONFIG_MULTI_RADIO
-    if ((aRxInfo.mNeighbor != nullptr) && !challenge.IsEmpty())
+    if ((aRxInfo.mNeighbor != nullptr) && (challenge.mLength != 0))
     {
         aRxInfo.mNeighbor->ClearLastRxFragmentTag();
     }
@@ -3551,14 +3537,14 @@ exit:
 
 void Mle::HandleChildUpdateResponse(RxInfo &aRxInfo)
 {
-    Error       error = kErrorNone;
-    uint8_t     status;
-    uint8_t     mode;
-    RxChallenge response;
-    uint32_t    linkFrameCounter;
-    uint32_t    mleFrameCounter;
-    uint16_t    sourceAddress;
-    uint32_t    timeout;
+    Error     error = kErrorNone;
+    uint8_t   status;
+    uint8_t   mode;
+    Challenge response;
+    uint32_t  linkFrameCounter;
+    uint32_t  mleFrameCounter;
+    uint16_t  sourceAddress;
+    uint32_t  timeout;
 
     Log(kMessageReceive, kTypeChildUpdateResponseOfParent, aRxInfo.mMessageInfo.GetPeerAddr());
 
@@ -3567,7 +3553,7 @@ void Mle::HandleChildUpdateResponse(RxInfo &aRxInfo)
     case kErrorNone:
         break;
     case kErrorNotFound:
-        response.Clear();
+        response.mLength = 0;
         break;
     default:
         ExitNow(error = kErrorParse);
@@ -3687,7 +3673,7 @@ void Mle::HandleChildUpdateResponse(RxInfo &aRxInfo)
         OT_ASSERT(false);
     }
 
-    aRxInfo.mClass = response.IsEmpty() ? RxInfo::kPeerMessage : RxInfo::kAuthoritativeMessage;
+    aRxInfo.mClass = (response.mLength == 0) ? RxInfo::kPeerMessage : RxInfo::kAuthoritativeMessage;
 
 exit:
 
@@ -3782,7 +3768,7 @@ void Mle::HandleLinkMetricsManagementRequest(RxInfo &aRxInfo)
 
     Log(kMessageReceive, kTypeLinkMetricsManagementRequest, aRxInfo.mMessageInfo.GetPeerAddr());
 
-    VerifyOrExit(aRxInfo.IsNeighborStateValid(), error = kErrorInvalidState);
+    VerifyOrExit(aRxInfo.mNeighbor != nullptr, error = kErrorInvalidState);
 
     SuccessOrExit(
         error = Get<LinkMetrics::Subject>().HandleManagementRequest(aRxInfo.mMessage, *aRxInfo.mNeighbor, status));
@@ -3804,7 +3790,7 @@ void Mle::HandleLinkMetricsManagementResponse(RxInfo &aRxInfo)
 
     Log(kMessageReceive, kTypeLinkMetricsManagementResponse, aRxInfo.mMessageInfo.GetPeerAddr());
 
-    VerifyOrExit(aRxInfo.IsNeighborStateValid(), error = kErrorInvalidState);
+    VerifyOrExit(aRxInfo.mNeighbor != nullptr, error = kErrorInvalidState);
 
     error =
         Get<LinkMetrics::Initiator>().HandleManagementResponse(aRxInfo.mMessage, aRxInfo.mMessageInfo.GetPeerAddr());
@@ -3823,8 +3809,6 @@ void Mle::HandleLinkProbe(RxInfo &aRxInfo)
     uint8_t seriesId;
 
     Log(kMessageReceive, kTypeLinkProbe, aRxInfo.mMessageInfo.GetPeerAddr());
-
-    VerifyOrExit(aRxInfo.IsNeighborStateValid(), error = kErrorInvalidState);
 
     SuccessOrExit(error = Get<LinkMetrics::Subject>().HandleLinkProbe(aRxInfo.mMessage, seriesId));
     aRxInfo.mNeighbor->AggregateLinkMetrics(seriesId, LinkMetrics::SeriesInfo::kSeriesTypeLinkProbe,
@@ -4422,6 +4406,20 @@ void Mle::TlvList::AddElementsFrom(const TlvList &aTlvList)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+// Challenge
+
+void Mle::Challenge::GenerateRandom(void)
+{
+    mLength = kMaxChallengeSize;
+    IgnoreError(Random::Crypto::FillBuffer(mBuffer, mLength));
+}
+
+bool Mle::Challenge::Matches(const uint8_t *aBuffer, uint8_t aLength) const
+{
+    return (mLength == aLength) && (memcmp(mBuffer, aBuffer, aLength) == 0);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 // DelayedResponseMetadata
 
 void Mle::DelayedResponseMetadata::ReadFrom(const Message &aMessage)
@@ -4523,14 +4521,19 @@ Error Mle::TxMessage::AppendModeTlv(DeviceMode aMode) { return Tlv::Append<ModeT
 
 Error Mle::TxMessage::AppendTimeoutTlv(uint32_t aTimeout) { return Tlv::Append<TimeoutTlv>(*this, aTimeout); }
 
-Error Mle::TxMessage::AppendChallengeTlv(const TxChallenge &aChallenge)
+Error Mle::TxMessage::AppendChallengeTlv(const Challenge &aChallenge)
 {
-    return Tlv::Append<ChallengeTlv>(*this, &aChallenge, sizeof(aChallenge));
+    return Tlv::Append<ChallengeTlv>(*this, aChallenge.mBuffer, aChallenge.mLength);
 }
 
-Error Mle::TxMessage::AppendResponseTlv(const RxChallenge &aResponse)
+Error Mle::TxMessage::AppendChallengeTlv(const uint8_t *aChallenge, uint8_t aChallengeLength)
 {
-    return Tlv::Append<ResponseTlv>(*this, aResponse.GetBytes(), aResponse.GetLength());
+    return Tlv::Append<ChallengeTlv>(*this, aChallenge, aChallengeLength);
+}
+
+Error Mle::TxMessage::AppendResponseTlv(const Challenge &aResponse)
+{
+    return Tlv::Append<ResponseTlv>(*this, aResponse.mBuffer, aResponse.mLength);
 }
 
 Error Mle::TxMessage::AppendLinkFrameCounterTlv(void)
@@ -4949,25 +4952,30 @@ Error Mle::TxMessage::AppendPendingDatasetTlv(void)
 //---------------------------------------------------------------------------------------------------------------------
 // RxMessage
 
-Error Mle::RxMessage::ReadChallengeOrResponse(uint8_t aTlvType, RxChallenge &aRxChallenge) const
+Error Mle::RxMessage::ReadChallengeOrResponse(uint8_t aTlvType, Challenge &aBuffer) const
 {
     Error    error;
     uint16_t offset;
     uint16_t length;
 
     SuccessOrExit(error = Tlv::FindTlvValueOffset(*this, aTlvType, offset, length));
-    error = aRxChallenge.ReadFrom(*this, offset, length);
+    VerifyOrExit(length >= kMinChallengeSize, error = kErrorParse);
+
+    length = Min(length, kMaxChallengeSize);
+
+    ReadBytes(offset, aBuffer.mBuffer, length);
+    aBuffer.mLength = static_cast<uint8_t>(length);
 
 exit:
     return error;
 }
 
-Error Mle::RxMessage::ReadChallengeTlv(RxChallenge &aChallenge) const
+Error Mle::RxMessage::ReadChallengeTlv(Challenge &aChallenge) const
 {
     return ReadChallengeOrResponse(Tlv::kChallenge, aChallenge);
 }
 
-Error Mle::RxMessage::ReadResponseTlv(RxChallenge &aResponse) const
+Error Mle::RxMessage::ReadResponseTlv(Challenge &aResponse) const
 {
     return ReadChallengeOrResponse(Tlv::kResponse, aResponse);
 }

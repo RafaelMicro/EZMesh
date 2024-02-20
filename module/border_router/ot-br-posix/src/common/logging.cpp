@@ -78,17 +78,12 @@ void otbrLogSetLevel(otbrLogLevel aLevel)
 }
 
 /** Initialize logging */
-void otbrLogInit(const char *aProgramName, otbrLogLevel aLevel, bool aPrintStderr)
+void otbrLogInit(const char *aIdent, otbrLogLevel aLevel, bool aPrintStderr)
 {
-    const char *ident;
-
-    assert(aProgramName != nullptr);
+    assert(aIdent);
     assert(aLevel >= OTBR_LOG_EMERG && aLevel <= OTBR_LOG_DEBUG);
 
-    ident = strrchr(aProgramName, '/');
-    ident = (ident != nullptr) ? ident + 1 : aProgramName;
-
-    openlog(ident, (LOG_CONS | LOG_PID) | (aPrintStderr ? LOG_PERROR : 0), OTBR_SYSLOG_FACILITY_ID);
+    openlog(aIdent, (LOG_CONS | LOG_PID) | (aPrintStderr ? LOG_PERROR : 0), OTBR_SYSLOG_FACILITY_ID);
     sLevel        = aLevel;
     sDefaultLevel = sLevel;
 }

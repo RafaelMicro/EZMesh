@@ -312,18 +312,16 @@ protected:
 #if OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE
     static void HandleLinkMetricsReport_Jump(const otIp6Address        *aSource,
                                              const otLinkMetricsValues *aMetricsValues,
-                                             otLinkMetricsStatus        aStatus,
+                                             uint8_t                    aStatus,
                                              void                      *aContext);
 
     void HandleLinkMetricsReport(const otIp6Address        *aSource,
                                  const otLinkMetricsValues *aMetricsValues,
-                                 otLinkMetricsStatus        aStatus);
+                                 uint8_t                    aStatus);
 
-    static void HandleLinkMetricsMgmtResponse_Jump(const otIp6Address *aSource,
-                                                   otLinkMetricsStatus aStatus,
-                                                   void               *aContext);
+    static void HandleLinkMetricsMgmtResponse_Jump(const otIp6Address *aSource, uint8_t aStatus, void *aContext);
 
-    void HandleLinkMetricsMgmtResponse(const otIp6Address *aSource, otLinkMetricsStatus aStatus);
+    void HandleLinkMetricsMgmtResponse(const otIp6Address *aSource, uint8_t aStatus);
 
     static void HandleLinkMetricsEnhAckProbingIeReport_Jump(otShortAddress             aShortAddress,
                                                             const otExtAddress        *aExtAddress,

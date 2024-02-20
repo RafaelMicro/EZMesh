@@ -8,7 +8,6 @@ Usage : `br [command] ...`
 - [disable](#disable)
 - [enable](#enable)
 - [help](#help)
-- [init](#init)
 - [nat64prefix](#nat64prefix)
 - [omrprefix](#omrprefix)
 - [onlinkprefix](#onlinkprefix)
@@ -36,17 +35,6 @@ prefixtable
 rioprf
 routeprf
 state
-Done
-```
-
-### init
-
-Usage: `br init <interface> <enabled>`
-
-Initializes the Border Routing Manager on given infrastructure interface.
-
-```bash
-> br init 2 1
 Done
 ```
 

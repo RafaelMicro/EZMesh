@@ -340,13 +340,12 @@ void Mpl::AddBufferedMessage(Message &aMessage, uint16_t aSeedId, uint8_t aSeque
     Message *messageCopy = nullptr;
     Metadata metadata;
     uint8_t  hopLimit = 0;
-    uint8_t  interval;
 
 #if OPENTHREAD_CONFIG_MPL_DYNAMIC_INTERVAL_ENABLE
     // adjust the first MPL forward interval dynamically according to the network scale
-    interval = (kDataMessageInterval / Mle::kMaxRouters) * Get<RouterTable>().GetNeighborCount(kLinkQuality1);
+    uint8_t interval = (kDataMessageInterval / Mle::kMaxRouters) * Get<RouterTable>().GetNeighborCount();
 #else
-    interval = kDataMessageInterval;
+    uint8_t interval = kDataMessageInterval;
 #endif
 
     VerifyOrExit(GetTimerExpirations() > 0);
@@ -418,17 +417,17 @@ void Mpl::HandleRetransmissionTimer(void)
             {
                 mBufferedMessageSet.Dequeue(message);
 
-                // if (metadata.mTransmissionCount == timerExpirations)
-                // {
-                //    if (metadata.mTransmissionCount > 1)
-                //    {
-                //        message.SetSubType(Message::kSubTypeMplRetransmission);
-                //    }
+                if (metadata.mTransmissionCount == timerExpirations)
+                {
+                    if (metadata.mTransmissionCount > 1)
+                    {
+                        message.SetSubType(Message::kSubTypeMplRetransmission);
+                    }
 
-                //    metadata.RemoveFrom(message);
-                //    Get<Ip6>().EnqueueDatagram(message);
-               // }
-                //else
+                    metadata.RemoveFrom(message);
+                    Get<Ip6>().EnqueueDatagram(message);
+                }
+                else
                 {
                     // Stop retransmitting if the number of timer expirations is already exceeded.
                     message.Free();
@@ -458,15 +457,10 @@ void Mpl::Metadata::RemoveFrom(Message &aMessage) const
 
 void Mpl::Metadata::UpdateIn(Message &aMessage) const { aMessage.Write(aMessage.GetLength() - sizeof(*this), *this); }
 
-void Mpl::Metadata::GenerateNextTransmissionTime(TimeMilli aCurrentTime, uint16_t aInterval)
+void Mpl::Metadata::GenerateNextTransmissionTime(TimeMilli aCurrentTime, uint8_t aInterval)
 {
     // Emulate Trickle timer behavior and set up the next retransmission within [0,I) range.
-    uint16_t t;
-
-    if(aInterval < 64)
-        aInterval = 64;
-
-    t = Random::NonCrypto::GetUint16InRange(0, aInterval);
+    uint8_t t = (aInterval == 0) ? aInterval : Random::NonCrypto::GetUint8InRange(0, aInterval);
 
     // Set transmission time at the beginning of the next interval.
     mTransmissionTime = aCurrentTime + static_cast<uint32_t>(mIntervalOffset + t);

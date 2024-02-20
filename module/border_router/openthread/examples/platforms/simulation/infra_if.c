@@ -41,7 +41,7 @@ bool otPlatInfraIfHasAddress(uint32_t aInfraIfIndex, const otIp6Address *aAddres
 
 otError otPlatInfraIfSendIcmp6Nd(uint32_t            aInfraIfIndex,
                                  const otIp6Address *aDestAddress,
-                                 const uint8_t *     aBuffer,
+                                 const uint8_t      *aBuffer,
                                  uint16_t            aBufferLength)
 {
     OT_UNUSED_VARIABLE(aInfraIfIndex);
@@ -49,13 +49,13 @@ otError otPlatInfraIfSendIcmp6Nd(uint32_t            aInfraIfIndex,
     OT_UNUSED_VARIABLE(aBuffer);
     OT_UNUSED_VARIABLE(aBufferLength);
 
-    return OT_ERROR_FAILED;
+    return OT_ERROR_NONE;
 }
 
 otError otPlatInfraIfDiscoverNat64Prefix(uint32_t aInfraIfIndex)
 {
     OT_UNUSED_VARIABLE(aInfraIfIndex);
 
-    return OT_ERROR_FAILED;
+    return OT_ERROR_NONE;
 }
 #endif
