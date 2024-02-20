@@ -1,4 +1,5 @@
 #include "libezmesh.h"
+
 #include <stdint.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -231,6 +232,7 @@ int main(int argc, char *argv[])
 void *ezmesh_to_pty_func(void *ptr)
 {
     ssize_t size = 0;
+    int i;
 
     // unused variable
     (void)ptr;
@@ -251,7 +253,7 @@ void *ezmesh_to_pty_func(void *ptr)
 
 
             printf("r-> %ld\n", size);
-            for (int i = 0; i < size; i++)
+            for (i = 0; i < size; i++)
             {
                 if ((i & 0xF) == 8)
                 {
@@ -286,6 +288,7 @@ void *pty_to_ezmesh_func(void *ptr)
 {
     ssize_t size = 0;
     unsigned int d_len = 0;
+    int i;
 
     // unused variable
     (void)ptr;
@@ -304,7 +307,7 @@ void *pty_to_ezmesh_func(void *ptr)
                 d_len = data_to_ezmesh[3] + 4;
             }
             printf("w-> %d\n", d_len);
-            for (int i = 0; i < d_len; i++)
+            for (i = 0; i < d_len; i++)
             {
                 if ((i & 0xF) == 8)
                 {

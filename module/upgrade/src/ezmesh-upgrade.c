@@ -173,8 +173,9 @@ static void _log_mem(char *prefix, char *pAddr, int bytes)
 {
     uintptr_t addr = (uintptr_t)pAddr;
     char *pCur = pAddr;
+    int i = 0;
 
-    for (int i = 0; i < bytes; i++)
+    for (i = 0; i < bytes; i++)
     {
         if ((i & 0xF) == 8)
         {
@@ -194,8 +195,8 @@ static void _log_mem(char *prefix, char *pAddr, int bytes)
 static char _gateway_checksum_calc(char *pBuf, int len)
 {
     char cs = 0;
-
-    for (int i = 0; i < len; i++)
+    int i;
+    for (i = 0; i < len; i++)
     {
         cs += pBuf[i];
     }
