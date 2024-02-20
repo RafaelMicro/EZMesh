@@ -27,6 +27,7 @@ set(OT_MULTIPAN_RCP ON CACHE BOOL "enable multi-PAN RCP")
 set(OT_POSIX_CONFIG_RCP_BUS "EZMESH" CACHE STRING "RCP bus type")
 set(OT_DIAGNOSTIC ON CACHE BOOL "enable diagnostic support")
 set(OT_PACKAGE_NAME "OPENTHREAD" CACHE STRING "OpenThread Package Name")
+set(OT_PACKAGE_VERSION "8bc2504" CACHE STRING "OpenThread Package Version")
 set(OT_FULL_LOGS OFF CACHE BOOL "Enable debug level logging" FORCE)
 
 
