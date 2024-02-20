@@ -36,6 +36,7 @@ CMAKE_OPTIONS+= \
 	-DOTBR_WEB=OFF \
 	-DOTBR_NAT64=OFF \
 	-DNAT64_SERVICE=\"openthread\"
+TARGET_CFLAGS += -DOPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME=\\\"/tmp/openthread-%s\\\"
 
 define Package/ezmesh
 	TITLE:=EZMesh
