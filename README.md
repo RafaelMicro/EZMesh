@@ -65,7 +65,7 @@ $ mkdir build && cd build && cmake ../ -DOTBR_INFRA_IF_NAME=enp0s3 \
 |Controller|CONFIG_CONTROLLER|Controller feature|**true**|-DCONFIG_CONTROLLER=true|
 |Controller|CONFIG_UPGRADE|Enable controller upgrade|**true**|-DCONFIG_UPGRADE=true|
 |Bluetooth|CONFIG_BLUETOOTH|Bluetooth feature|**false**|-DCONFIG_BLUETOOTH=true|
-|Border Router|CONFIG_BORDER_ROUTER|Border Router feature|**false**|-DCONFIG_BORDER_ROUTER=tru|
+|Border Router|CONFIG_BORDER_ROUTER|Border Router feature|**false**|-DCONFIG_BORDER_ROUTER=true|
 |Zigbee Gateway|CONFIG_ZIGBEE_GW_SERVICE|Zigbee GW feature|**false**|-DCONFIG_ZIGBEE_GW_SERVICE=true|
 |sub-G Gateway|CONFIG_SUBG_SERVICE|subG Gateway feature|**false**|-DCONFIG_SUBG_SERVICE=true|
 
