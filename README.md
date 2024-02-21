@@ -8,7 +8,8 @@ The EZMesh currently supports:
 - **Thread**
 - **Matter**
 - **Zigbee**
-**The EZMesh Project is supported by [Rafael Micro](https://www.rafaelmicro.com/).**
+- 
+**The EZMesh Project is supported by Rafael Micro URL: [EN](https://www.rafaelmicro.com/en/)/[TW](https://www.rafaelmicro.com/tw/).**
 
 ---
 ## Support Platefrom
