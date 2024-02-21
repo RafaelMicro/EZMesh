@@ -1,0 +1,441 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 21c50d41..08a27a3b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,6 @@
+ # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/ is checked
+-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
++list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
++list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
+ 
+ # we do not need to have WIN32 defined
+ set(CMAKE_LEGACY_CYGWIN_WIN32 0)
+@@ -26,8 +26,8 @@ include(MacrosAutotools)
+ autoinit(configure.ac)
+ autoversion(dbus)
+ 
+-if(EXISTS ${CMAKE_SOURCE_DIR}/config.h.in)
+-    autoheaderchecks(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_SOURCE_DIR}/cmake/ConfigureChecks.cmake ${CMAKE_SOURCE_DIR}/cmake/config.h.cmake)
++if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/config.h.in)
++    autoheaderchecks(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ConfigureChecks.cmake ${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.cmake)
+ else()
+     message(STATUS "Generate config.h.in with autogen.sh to enable cmake header difference check.")
+ endif()
+@@ -118,7 +118,7 @@ endif()
+ # search for required packages
+ if(WIN32)
+     # include local header first to avoid using old installed header
+-    set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${CMAKE_SOURCE_DIR}/..)
++    set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/..)
+     include(Win32Macros)
+     addExplorerWrapper(${CMAKE_PROJECT_NAME})
+ endif()
+@@ -137,7 +137,7 @@ if(WIN32)
+     set(FD_SETSIZE "8192" CACHE STRING "The maximum number of connections that can be handled at once")
+ endif()
+ 
+-find_package(EXPAT)
++find_package(EXPAT REQUIRED)
+ find_package(X11)
+ find_package(GLib2)
+ if(GLIB2_FOUND)
+@@ -150,8 +150,8 @@ add_definitions(-D_GNU_SOURCE)
+ # do config checks
+ include(ConfigureChecks)
+ 
+-# @TODO: how to remove last dir from ${CMAKE_SOURCE_DIR} ?
+-set(DBUS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/..)
++# @TODO: how to remove last dir from ${CMAKE_CURRENT_SOURCE_DIR} ?
++set(DBUS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
+ 
+ # make some more macros available
+ include(MacroLibrary)
+@@ -280,16 +280,16 @@ enable_testing()
+ #########################################################################
+ 
+ ########### build output path definitions ###############
+-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
++set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+ if(WIN32 OR CYGWIN)
+-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
++    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+ else()
+-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
++    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+ endif()
+-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
++set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+ 
+ # for including config.h and for includes like <dir/foo.h>
+-include_directories(. ${CMAKE_BINARY_DIR} ${CMAKE_INCLUDE_PATH})
++include_directories(. ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_INCLUDE_PATH})
+ 
+ # linker search directories
+ link_directories(${DBUS_LIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} )
+@@ -300,7 +300,7 @@ set(DBUS_INCLUDES)
+ enable_testing()
+ 
+ ########### command line options ###############
+-option(DBUS_BUILD_TESTS "enable unit test code" ON)
++option(DBUS_BUILD_TESTS "enable unit test code" OFF)
+ 
+ if(DBUS_BUILD_TESTS)
+     set(DBUS_ENABLE_EMBEDDED_TESTS ON)
+@@ -419,7 +419,7 @@ if(MSVC_IDE)
+         message(STATUS)
+     endif()
+     set(TEST_PATH_FORCE FORCE)
+-    file(REMOVE ${CMAKE_BINARY_DIR}/data/dbus-1/services)
++    file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/data/dbus-1/services)
+ endif()
+ 
+ #### Find socket directories
+@@ -494,10 +494,10 @@ if(DBUS_BUILD_TESTS)
+     # different, and it has no direct Autotools equivalent (Autotools
+     # tests automatically get their own ${builddir} as working directory).
+     set(DBUS_TEST_WORKING_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}${IDE_BIN})
+-    set(DBUS_TEST_DATA ${Z_DRIVE_IF_WINE}${CMAKE_BINARY_DIR}/test/data)
++    set(DBUS_TEST_DATA ${Z_DRIVE_IF_WINE}${CMAKE_CURRENT_BINARY_DIR}/test/data)
+     set(DBUS_TEST_DAEMON ${Z_DRIVE_IF_WINE}${CMAKE_RUNTIME_OUTPUT_DIRECTORY}${IDE_BIN}/dbus-daemon${EXEEXT})
+     set(DBUS_TEST_DBUS_LAUNCH ${Z_DRIVE_IF_WINE}${CMAKE_RUNTIME_OUTPUT_DIRECTORY}${IDE_BIN}/dbus-launch${EXEEXT})
+-    set(DBUS_TEST_HOMEDIR ${Z_DRIVE_IF_WINE}${CMAKE_BINARY_DIR}/dbus)
++    set(DBUS_TEST_HOMEDIR ${Z_DRIVE_IF_WINE}${CMAKE_CURRENT_BINARY_DIR}/dbus)
+     set(DBUS_TEST_RUN_SESSION ${Z_DRIVE_IF_WINE}${CMAKE_RUNTIME_OUTPUT_DIRECTORY}${IDE_BIN}/dbus-run-session${EXEEXT})
+     set(TEST_LAUNCH_HELPER_BINARY ${Z_DRIVE_IF_WINE}${DBUS_TEST_EXEC}/dbus-daemon-launch-helper-for-tests${EXEEXT})
+     if(UNIX)
+@@ -518,8 +518,8 @@ set(DBUS_INTERNAL_CLIENT_DEFINITIONS "-DDBUS_COMPILATION")
+ configure_file(cmake/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
+ 
+ if(WIN32)
+-configure_file(cmake/dbus-env.bat.cmake ${CMAKE_BINARY_DIR}/bin/dbus-env.bat )
+-    install(FILES ${CMAKE_BINARY_DIR}/bin/dbus-env.bat DESTINATION ${CMAKE_INSTALL_BINDIR})
++configure_file(cmake/dbus-env.bat.cmake ${CMAKE_CURRENT_BINARY_DIR}/bin/dbus-env.bat )
++    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/bin/dbus-env.bat DESTINATION ${CMAKE_INSTALL_BINDIR})
+ endif()
+ 
+ #
+@@ -527,14 +527,14 @@ endif()
+ #
+ set(INSTALL_CMAKE_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/DBus1)
+ if(WIN32)
+-    configure_file(cmake/DBus1Config.cmake.in "${CMAKE_BINARY_DIR}/DBus1Config.cmake" @ONLY)
++    configure_file(cmake/DBus1Config.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/DBus1Config.cmake" @ONLY)
+ else()
+-    configure_file(cmake/DBus1Config.pkgconfig.in "${CMAKE_BINARY_DIR}/DBus1Config.cmake" @ONLY)
++    configure_file(cmake/DBus1Config.pkgconfig.in "${CMAKE_CURRENT_BINARY_DIR}/DBus1Config.cmake" @ONLY)
+ endif()
+-configure_file(cmake/DBus1ConfigVersion.cmake.in "${CMAKE_BINARY_DIR}/DBus1ConfigVersion.cmake" @ONLY)
++configure_file(cmake/DBus1ConfigVersion.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/DBus1ConfigVersion.cmake" @ONLY)
+ install(FILES
+-    "${CMAKE_BINARY_DIR}/DBus1Config.cmake"
+-    "${CMAKE_BINARY_DIR}/DBus1ConfigVersion.cmake"
++    "${CMAKE_CURRENT_BINARY_DIR}/DBus1Config.cmake"
++    "${CMAKE_CURRENT_BINARY_DIR}/DBus1ConfigVersion.cmake"
+     DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev
+ )
+ 
+@@ -575,7 +575,7 @@ message("        install bindir:           ${CMAKE_INSTALL_FULL_BINDIR}        "
+ message("        install sysconfdir:       ${CMAKE_INSTALL_FULL_SYSCONFDIR}    ")
+ message("        install datadir:          ${CMAKE_INSTALL_FULL_DATADIR}       ")
+ message("        source code location:     ${DBUS_SOURCE_DIR}                  ")
+-message("        build dir:                ${CMAKE_BINARY_DIR}                 ")
++message("        build dir:                ${CMAKE_CURRENT_BINARY_DIR}         ")
+ message("        c compiler:               ${C_COMPILER}                       ")
+ message("        cflags:                   ${CMAKE_C_FLAGS}                    ")
+ message("        cflags debug:             ${CMAKE_C_FLAGS_DEBUG}              ")
+@@ -665,7 +665,7 @@ include(CPackInstallConfig)
+ 
+ add_custom_target(help-options
+     cmake -LH
+-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
++    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+ )
+ 
+ #
+@@ -693,7 +693,7 @@ if(DBUS_ENABLE_PKGCONFIG)
+         set(datadir "\${prefix}/${CMAKE_INSTALL_DATADIR}")
+         set(datarootdir "\${prefix}/${CMAKE_INSTALL_DATADIR}")
+         set(dbus_daemondir "\${prefix}/${CMAKE_INSTALL_BINDIR}")
+-        configure_file(dbus-1.pc.in ${CMAKE_BINARY_DIR}/dbus-1.pc @ONLY)
+-        install(FILES ${CMAKE_BINARY_DIR}/dbus-1.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
++        configure_file(dbus-1.pc.in ${CMAKE_CURRENT_BINARY_DIR}/dbus-1.pc @ONLY)
++        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dbus-1.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+     endif()
+ endif()
+diff --git a/bus/CMakeLists.txt b/bus/CMakeLists.txt
+index 84d86125..ce83c4be 100644
+--- a/bus/CMakeLists.txt
++++ b/bus/CMakeLists.txt
+@@ -18,7 +18,7 @@ set(SERVICE_FILES test/data/valid-service-files)
+ file(GLOB FILES "${SERVICE_FILES}/*.service.in" )
+ foreach(FILE ${FILES})
+     get_filename_component(FILENAME ${FILE} NAME_WE)
+-    set(TARGET ${CMAKE_BINARY_DIR}/data/dbus-1/services/${FILENAME}.service)
++    set(TARGET ${CMAKE_CURRENT_BINARY_DIR}/data/dbus-1/services/${FILENAME}.service)
+     if(CONFIG_VERBOSE)
+         message("FROM: ${FILE}\nTO: ${TARGET}\n")
+     endif()
+@@ -84,9 +84,10 @@ if(DBUS_ENABLE_STATS)
+ endif()
+ 
+ include_directories(
+-    ${CMAKE_BINARY_DIR}
+-    ${CMAKE_SOURCE_DIR}/..
+-    ${EXPAT_INCLUDE_DIR}
++    ${CMAKE_CURRENT_BINARY_DIR}
++    ${CMAKE_CURRENT_SOURCE_DIR}/..
++    ${CMAKE_SOURCE_DIR}/third_party/libexpat/expat/lib
++    # ${EXPAT_INCLUDE_DIR}
+ )
+ 
+ set(DBUS_DAEMON_SOURCES
+@@ -98,7 +99,7 @@ if(WIN32)
+ endif()
+ 
+ add_library(dbus-daemon-internal STATIC ${BUS_SOURCES})
+-target_link_libraries(dbus-daemon-internal ${DBUS_INTERNAL_LIBRARIES} ${EXPAT_LIBRARIES})
++target_link_libraries(dbus-daemon-internal ${DBUS_INTERNAL_LIBRARIES} ${EXPAT_LIBRARIES}/libexpat.so)
+ 
+ add_executable(dbus-daemon ${DBUS_DAEMON_SOURCES})
+ target_link_libraries(dbus-daemon dbus-daemon-internal)
+@@ -129,7 +130,7 @@ if(DBUS_SERVICE)
+ 
+     add_executable_version_info(dbus_service_SOURCES "dbus-service")
+     add_executable(dbus-service ${dbus_service_SOURCES} )
+-    target_link_libraries(dbus-service ${DBUS_INTERNAL_LIBRARIES} ${EXPAT_LIBRARIES})
++    target_link_libraries(dbus-service ${DBUS_INTERNAL_LIBRARIES} ${EXPAT_LIBRARIES}/libexpat.so)
+     set_target_properties(dbus-service PROPERTIES COMPILE_FLAGS ${DBUS_INTERNAL_CLIENT_DEFINITIONS})
+     install(TARGETS dbus-service ${INSTALL_TARGETS_DEFAULT_ARGS})
+ endif()
+@@ -144,7 +145,7 @@ set(LAUNCH_HELPER_SOURCES
+ 
+ if(NOT WIN32)
+     add_library(launch-helper-internal STATIC ${LAUNCH_HELPER_SOURCES})
+-    target_link_libraries(launch-helper-internal ${DBUS_INTERNAL_LIBRARIES} ${EXPAT_LIBRARIES})
++    target_link_libraries(launch-helper-internal ${DBUS_INTERNAL_LIBRARIES} ${EXPAT_LIBRARIES}/libexpat.so)
+ 
+     add_executable(dbus-daemon-launch-helper activation-helper.c activation-helper-bin.c )
+     target_link_libraries(dbus-daemon-launch-helper launch-helper-internal)
+diff --git a/cmake/ConfigureChecks.cmake b/cmake/ConfigureChecks.cmake
+index 7bc789f0..29552743 100644
+--- a/cmake/ConfigureChecks.cmake
++++ b/cmake/ConfigureChecks.cmake
+@@ -160,11 +160,11 @@ if(NOT HAVE_DIRFD)
+     " HAVE_DDFD)
+ endif()
+ 
+-check_type_size("short"     SIZEOF_SHORT)
+-check_type_size("int"       SIZEOF_INT)
+-check_type_size("long"      SIZEOF_LONG)
+-check_type_size("long long" SIZEOF_LONG_LONG)
+-check_type_size("__int64"   SIZEOF___INT64)
++set(SIZEOF_SHORT 2)
++set(SIZEOF_INT 4)
++set(SIZEOF_LONG 4)
++set(SIZEOF_LONG_LONG 8)
++set(SIZEOF___INT64 8)
+ set(CMAKE_EXTRA_INCLUDE_FILES "sys/socket.h")
+ check_type_size("socklen_t" SOCKLEN_T) # define HAVE_SOCKLEN_T and SOCKLEN_T for size
+ set(CMAKE_EXTRA_INCLUDE_FILES)
+diff --git a/cmake/modules/CPackInstallConfig.cmake b/cmake/modules/CPackInstallConfig.cmake
+index 221a7938..a22af623 100644
+--- a/cmake/modules/CPackInstallConfig.cmake
++++ b/cmake/modules/CPackInstallConfig.cmake
+@@ -9,8 +9,8 @@ endif()
+ 
+ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "D-BUS For Windows")
+ set(CPACK_PACKAGE_VENDOR "D-BUS Windows Team")
+-set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README")
+-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING")
++set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
++set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
+ # duplicated from VERSION
+ set(CPACK_PACKAGE_VERSION_MAJOR ${VERSION_MAJOR})
+ set(CPACK_PACKAGE_VERSION_MINOR ${VERSION_MINOR})
+@@ -22,7 +22,7 @@ if(WIN32 AND NOT UNIX)
+     set(CPACK_NSIS_COMPRESSOR "/SOLID lzma")
+   # There is a bug in NSI that does not handle full unix paths properly. Make
+   # sure there is at least one set of four (4) backlasshes.
+-# SET(CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
++# SET(CPACK_PACKAGE_ICON "${CMake_CURRENT_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
+     set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\dbus-launch.bat")
+     set(CPACK_NSIS_DISPLAY_NAME "D-Bus for Windows")
+     set(CPACK_NSIS_HELP_LINK "http:\\\\\\\\sourceforge.net/projects/windbus")
+diff --git a/cmake/modules/Macros.cmake b/cmake/modules/Macros.cmake
+index fed16007..c6951fb0 100644
+--- a/cmake/modules/Macros.cmake
++++ b/cmake/modules/Macros.cmake
+@@ -175,8 +175,8 @@ macro(add_uac_manifest _sources)
+     # 24 is the resource type, RT_MANIFEST
+     # constants are used because of a bug in windres
+     # see https://stackoverflow.com/questions/33000158/embed-manifest-file-to-require-administrator-execution-level-with-mingw32
+-    get_filename_component(UAC_FILE ${CMAKE_SOURCE_DIR}/tools/Win32.Manifest REALPATH)
+-    set(outfile ${CMAKE_BINARY_DIR}/disable-uac.rc)
++    get_filename_component(UAC_FILE ${CMAKE_CURRENT_SOURCE_DIR}/tools/Win32.Manifest REALPATH)
++    set(outfile ${CMAKE_CURRENT_BINARY_DIR}/disable-uac.rc)
+     if(NOT EXISTS outfile)
+         file(WRITE ${outfile} "1 24 \"${UAC_FILE}\"\n")
+     endif()
+@@ -187,7 +187,7 @@ macro(add_executable_version_info _sources _name)
+     set(DBUS_VER_INTERNAL_NAME "${_name}")
+     set(DBUS_VER_ORIGINAL_NAME "${DBUS_VER_INTERNAL_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
+     set(DBUS_VER_FILE_TYPE "VFT_APP")
+-    configure_file(${CMAKE_SOURCE_DIR}/dbus/versioninfo.rc.in ${CMAKE_CURRENT_BINARY_DIR}/versioninfo-${DBUS_VER_INTERNAL_NAME}.rc)
++    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dbus/versioninfo.rc.in ${CMAKE_CURRENT_BINARY_DIR}/versioninfo-${DBUS_VER_INTERNAL_NAME}.rc)
+     # version info and uac manifest can be combined in a binary because they use different resource types
+     list(APPEND ${_sources} ${CMAKE_CURRENT_BINARY_DIR}/versioninfo-${DBUS_VER_INTERNAL_NAME}.rc)
+ endmacro()
+@@ -196,7 +196,7 @@ macro(add_library_version_info _sources _name)
+     set(DBUS_VER_INTERNAL_NAME "${_name}")
+     set(DBUS_VER_ORIGINAL_NAME "${DBUS_VER_INTERNAL_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+     set(DBUS_VER_FILE_TYPE "VFT_DLL")
+-    configure_file(${CMAKE_SOURCE_DIR}/dbus/versioninfo.rc.in ${CMAKE_CURRENT_BINARY_DIR}/versioninfo-${DBUS_VER_INTERNAL_NAME}.rc)
++    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dbus/versioninfo.rc.in ${CMAKE_CURRENT_BINARY_DIR}/versioninfo-${DBUS_VER_INTERNAL_NAME}.rc)
+     # version info and uac manifest can be combined in a binary because they use different resource types
+     list(APPEND ${_sources} ${CMAKE_CURRENT_BINARY_DIR}/versioninfo-${DBUS_VER_INTERNAL_NAME}.rc)
+ endmacro()
+diff --git a/cmake/modules/Win32Macros.cmake b/cmake/modules/Win32Macros.cmake
+index 0946b037..3f30d4d0 100644
+--- a/cmake/modules/Win32Macros.cmake
++++ b/cmake/modules/Win32Macros.cmake
+@@ -31,13 +31,13 @@ if(WIN32)
+         if(MINGW)
+             get_filename_component(MINGW_BIN_PATH ${CMAKE_CXX_COMPILER} PATH)
+             set(ADD_PATH "${ADD_PATH};${MINGW_BIN_PATH}")
+-            write_file(${CMAKE_BINARY_DIR}/${_projectname}-shell.bat "set PATH=${ADD_PATH};%PATH%\ncmd.exe")
++            write_file(${CMAKE_CURRENT_BINARY_DIR}/${_projectname}-shell.bat "set PATH=${ADD_PATH};%PATH%\ncmd.exe")
+         else(MINGW)
+             if(CMAKE_BUILD_TOOL STREQUAL  "nmake")
+                 get_filename_component(VC_BIN_PATH ${CMAKE_CXX_COMPILER} PATH)
+-                write_file(${CMAKE_BINARY_DIR}/${_projectname}-shell.bat "set PATH=${ADD_PATH};%PATH%\ncall \"${VC_BIN_PATH}\\vcvars32.bat\"\ncmd.exe")
++                write_file(${CMAKE_CURRENT_BINARY_DIR}/${_projectname}-shell.bat "set PATH=${ADD_PATH};%PATH%\ncall \"${VC_BIN_PATH}\\vcvars32.bat\"\ncmd.exe")
+             else(CMAKE_BUILD_TOOL STREQUAL  "nmake")
+-                write_file(${CMAKE_BINARY_DIR}/${_projectname}-sln.bat "set PATH=${ADD_PATH};%PATH%\nstart ${_projectname}.sln")
++                write_file(${CMAKE_CURRENT_BINARY_DIR}/${_projectname}-sln.bat "set PATH=${ADD_PATH};%PATH%\nstart ${_projectname}.sln")
+             endif()
+         endif()
+     endmacro()
+diff --git a/dbus/CMakeLists.txt b/dbus/CMakeLists.txt
+index 2fedcba4..81b8762b 100644
+--- a/dbus/CMakeLists.txt
++++ b/dbus/CMakeLists.txt
+@@ -21,9 +21,7 @@ set(dbusinclude_HEADERS
+     dbus-threads.h
+     dbus-types.h
+ )
+-set(dbusinclude_ARCH_HEADERS
+-    ${CMAKE_CURRENT_BINARY_DIR}/dbus-arch-deps.h
+-)
++set(dbusinclude_ARCH_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/dbus-arch-deps.h)
+ 
+ ### source code that goes in the installed client library
+ ### and is specific to library functionality
+@@ -96,16 +94,12 @@ set(DBUS_LIB_HEADERS
+     dbus-transport.h
+     dbus-transport-protected.h
+     dbus-watch.h
+-    ${CMAKE_BINARY_DIR}/config.h
++    ${CMAKE_CURRENT_BINARY_DIR}/../config.h
+ )
+ if(UNIX)
+-    set(DBUS_LIB_HEADERS ${DBUS_LIB_HEADERS}
+-        dbus-transport-unix.h
+-    )
++    set(DBUS_LIB_HEADERS ${DBUS_LIB_HEADERS} dbus-transport-unix.h)
+ else(UNIX)
+-    set(DBUS_LIB_HEADERS ${DBUS_LIB_HEADERS}
+-        dbus-transport-win.h
+-    )
++    set(DBUS_LIB_HEADERS ${DBUS_LIB_HEADERS} dbus-transport-win.h)
+ endif()
+ 
+ 
+@@ -256,10 +250,7 @@ find_library(LIBRT rt)
+ find_library(LIBSOCKET socket)
+ 
+ ### Client library
+-add_library(dbus-1 SHARED
+-    ${libdbus_SOURCES}
+-    ${libdbus_HEADERS}
+-)
++add_library(dbus-1 SHARED ${libdbus_SOURCES} ${libdbus_HEADERS})
+ 
+ if(WIN32)
+     if(DEFINED DBUS_LIBRARY_REVISION)
+diff --git a/doc/CMakeLists.txt b/doc/CMakeLists.txt
+index 6d4d9911..7dbddb1b 100644
+--- a/doc/CMakeLists.txt
++++ b/doc/CMakeLists.txt
+@@ -11,22 +11,22 @@ if(DOXYGEN_EXECUTABLE)
+ endif()
+ 
+ if(DBUS_ENABLE_DOXYGEN_DOCS)
+-    set(top_srcdir ${CMAKE_SOURCE_DIR})
+-    set(top_builddir ${CMAKE_BINARY_DIR})
++    set(top_srcdir ${CMAKE_CURRENT_SOURCE_DIR})
++    set(top_builddir ${CMAKE_CURRENT_BINARY_DIR})
+     if(WIN32)
+         set(DBUS_GENERATE_MAN NO)
+     else()
+         set(DBUS_GENERATE_MAN YES)
+     endif()
+-    configure_file(../Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile )
+-    file(GLOB dbus_files "${CMAKE_SOURCE_DIR}/dbus/*.[ch]*")
++    configure_file(../Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile )
++    file(GLOB dbus_files "${CMAKE_CURRENT_SOURCE_DIR}/dbus/*.[ch]*")
+     add_custom_command(
+         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen.stamp
+-        DEPENDS ${CMAKE_SOURCE_DIR}/Doxyfile.in  ${CMAKE_BINARY_DIR}/Doxyfile ${dbus_files}
++        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in  ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile ${dbus_files}
+         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/api/html
+         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/api/man
+         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/api/xml
+-        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
++        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+         COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/doxygen.stamp
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+         COMMENT "Generating API documentation with Doxygen"
+@@ -92,7 +92,7 @@ configure_file(${srcfile} ${b})
+     add_custom_command(OUTPUT ${b}
+         COMMAND ${CMAKE_COMMAND} -E remove ${b}
+         COMMAND ${CMAKE_COMMAND} -P ${tmpfile}
+-        DEPENDS ${srcfile} ${CMAKE_BINARY_DIR}/CMakeCache.txt
++        DEPENDS ${srcfile} ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
+         COMMENT "Generating ${outname}"
+     )
+     add_custom_target(${outname} DEPENDS ${b})
+@@ -132,10 +132,10 @@ macro(COPYDIR _src _type)
+     foreach(FILE_TYPE ${_type})
+         foreach(DIR ${_src})
+             file(GLOB FILES "${DIR}/${FILE_TYPE}" )
+-            file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DIR})
++            file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR})
+             foreach(FILE ${FILES})
+                 get_filename_component(FILENAME ${FILE} NAME)
+-                set(TARGET ${CMAKE_BINARY_DIR}/${DIR}/${FILENAME})
++                set(TARGET ${CMAKE_CURRENT_BINARY_DIR}/${DIR}/${FILENAME})
+                 configure_file(${FILE} ${TARGET} COPYONLY)
+                 if(CONFIG_VERBOSE)
+                     message("FROM: ${FILE}\nTO: ${TARGET}\n")
+diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
+index f78bba54..38ce99f3 100644
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -224,7 +224,7 @@ set(TESTDIRS
+ set(CONFIG_VERBOSE 1)
+ 
+ foreach(DIR ${TESTDIRS})
+-    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DIR})
++    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${DIR})
+ endforeach()
+ 
+ ### copy tests to builddir so that generated tests and static tests 
+@@ -263,5 +263,5 @@ foreach(FILE_TYPE *.conf.in *.service.in)
+ endforeach()
+ 
+ message(STATUS "Copying generated bus config files to test directory")
+-configure_file(../bus/session.conf.in ${CMAKE_BINARY_DIR}/test/data/valid-config-files/session.conf @ONLY)
+-configure_file(../bus/system.conf.in ${CMAKE_BINARY_DIR}/test/data/valid-config-files-system/system.conf @ONLY)
++configure_file(../bus/session.conf.in ${CMAKE_CURRENT_BINARY_DIR}/test/data/valid-config-files/session.conf @ONLY)
++configure_file(../bus/system.conf.in ${CMAKE_CURRENT_BINARY_DIR}/test/data/valid-config-files-system/system.conf @ONLY)

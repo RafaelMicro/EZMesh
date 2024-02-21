@@ -1,6 +1,6 @@
-include(FetchContent)
+# include(FetchContent)
 
-set(FETCHCONTENT_QUIET False)
+# set(FETCHCONTENT_QUIET False)
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME ez-otbr)
 
 # ot-br-posix unfortunately has a variable set but not used, making our compiler fail because of warnings as errors.
