@@ -11,7 +11,8 @@ The EZMesh currently supports:
 **The EZMesh Project is supported by [Rafael Micro](https://www.rafaelmicro.com/).**
 
 ---
-## Support Platefrom Currently, the EZMesh supports many building methods: 
+## Support Platefrom
+Currently, the EZMesh supports many building methods: 
   - Debian/Ubuntu: Recommend version
     - Ubuntu 22.04.3 LTS (Ubuntu-based)
     - Raspberry Pi OS (Legacy) Lite (Debian-based)
