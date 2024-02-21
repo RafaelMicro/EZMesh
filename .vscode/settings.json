@@ -63,9 +63,6 @@
         "sys_callbacks.h": "c",
         "version.h": "c"
     },
-<<<<<<< Updated upstream
-    "C_Cpp.dimInactiveRegions": false
-=======
+    "C_Cpp.dimInactiveRegions": false,
     "cmake.configureOnOpen": false
->>>>>>> Stashed changes
 }
