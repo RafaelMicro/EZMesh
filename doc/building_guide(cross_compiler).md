@@ -1,9 +1,13 @@
-# The EZMesh Cross Compiler
-## Checkout submodule
+# BUILDING GUIDE With CROSS COMPILER
+## Project setup
+### Clone EZMesh and Checkout submodule
 ```
-$ git submodule update --init --recursive --force
+$ git clone https://github.com/RafaelMicro/EZMesh.git
+$ git submodule update --init --recursive
 ```
-## CMAKE defined for Cross Compiler 
+
+---
+## Configuration for Cross Compiler 
 - Following define is impoortant feature for cross-compiler:
     - CONFIG_USE_CROSS_COMPILER: Using CROSS_COMPILER or not
     - CONFIG_CROSS_COMPILER_SYSTEM_NAME: SYSTEM_NAME (using CMAKE_SYSTEM_NAME)
@@ -20,8 +24,9 @@ $ git submodule update --init --recursive --force
     -DCONFIG_CROSS_COMPILER_PATH=/home/meshtest/gcc-arm-x86_64-arm-none-linux-gnueabihf/bin
     -DCONFIG_CROSS_COMPILER_PREFIX=arm-none-linux-gnueabihf
     ```
-## Building Example
 
+---
+## Building Example
 ```
 $ cd build
 $ cmake ../ -DCONFIG_CONTROLLER=true \
@@ -52,6 +57,3 @@ $ cmake ../ -DCONFIG_CONTROLLER=true \
 -DCONFIG_CROSS_COMPILER_PREFIX=arm-none-linux-gnueabihf
 $ make
 ```
-
-
-
