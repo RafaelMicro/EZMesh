@@ -23,9 +23,8 @@ The EZMesh currently supports:
   - Cross Compiler: Before integrating EZMesh, you can use the GCC toolchain to build EZMesh for testing and evaluation
 ### Build for various platforms
 - Debian/Ubuntu: please follow [building_guide(debian_ubuntu)](doc/building_guide(debian_ubuntu).md) (https://github.com/RafaelMicro/EZMesh/blob/master/doc/building_guide(debian_ubuntu).md)
-- OpenWRT: please follow [building_guide(debian_ubuntu)](doc/building_guide(debian_ubuntu).md) (https://github.com/RafaelMicro/EZMesh/blob/master/doc/building_guide(debian_ubuntu).md)
+- OpenWRT: please follow [building_guide(OpenWRT)](doc/building_guide(OpenWRT).md) (https://github.com/RafaelMicro/EZMesh/blob/master/doc/building_guide(OpenWRT).md)
 - Cross Compiler: please follow [building_guide(cross_compiler)](doc/building_guide(cross_compiler).md) (https://github.com/RafaelMicro/EZMesh/blob/master/doc/building_guide(cross_compiler).md)
-
 
 ---
 ## Directory Structure
