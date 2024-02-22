@@ -1,13 +1,5 @@
-include(FetchContent)
-
-set(FETCHCONTENT_QUIET False)
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME ez-otbr)
-
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
-
-# ext_set_config_file(debconf/prerm)
-# ext_set_config_file(debconf/postinst)
-# ext_set_config_file(debconf/postrm)
 
 ext_set_config_file_with_gen(debconf/setup)
 ext_set_config_file_with_gen(debconf/services/ez-otbr)

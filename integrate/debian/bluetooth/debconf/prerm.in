@@ -1,4 +1,0 @@
-#!/bin/sh
-if type "systemctl" > /dev/null; then
-    sudo systemctl stop ez-bluetooth.service
-fi

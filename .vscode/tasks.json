@@ -1,0 +1,79 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cmake all",
+            "command": "cmake -B ${workspaceFolder}/build -S ${workspaceFolder} -DOTBR_INFRA_IF_NAME=enp0s3 -DCONFIG_GEN_SYSTEM=true -DCONFIG_GEN_SYSTEM=true -DCONFIG_CONTROLLER=true -DCONFIG_UPGRADE=true -DCONFIG_BLUETOOTH=true -DCONFIG_BORDER_ROUTER=true -DCONFIG_ZIGBEE_GW_SERVICE=true -DCONFIG_SUBG_SERVICE=true",
+            "type": "shell",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "clean build",
+            "command": "cmake --build ${workspaceFolder}/build --clean-first",
+            "type": "shell",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "build",
+            "command": "cmake --build ${workspaceFolder}/build",
+            "type": "shell",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "install",
+            "command": "sudo cmake --install ${workspaceFolder}/build/ && sudo ldconfig",
+            "type": "shell",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "start BT",
+            "command": "sudo ${workspaceFolder}/build/module/bluetooth/ez-bluetooth",
+            "type": "shell",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+
+        {
+            "label": "start ezmeshd",
+            "command": "sudo ./build/module/controller/ezmeshd -c ./module/controller/ez_config.ini",
+            "type": "shell",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "setup and build (all)",
+            "type": "shell",
+            "command": "echo '============ END ============'",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "cmake all",
+                "build"
+            ]
+        },
+        {
+            "label": "setup and clean build (all)",
+            "type": "shell",
+            "command": "echo '============ END ============'",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "cmake all",
+                "clean build"
+            ]
+        },
+        {
+            "label": "Quick setup",
+            "type": "shell",
+            "command": "echo '============ END ============'",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "cmake all",
+                "build",
+                "install",
+            ]
+        },
+    ],
+}

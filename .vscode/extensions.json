@@ -1,0 +1,20 @@
+{
+    "recommendations": [
+        "augustocdias.tasks-shell-input",
+        "eamodio.gitlens",
+        "editorconfig.editorconfig",
+        "esbenp.prettier-vscode",
+        "foxundermoon.shell-format",
+        "github.vscode-pull-request-github",
+        "ms-vscode.cpptools",
+        "xaver.clang-format",
+        "yzhang.markdown-all-in-one",
+        "ms-vscode.cpptools-extension-pack",
+        "twxs.cmake",
+        "mischelebuha.cmake-extension-pack",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.makefile-tools",
+        "spmeesseman.vscode-taskexplorer"
+    ],
+    "unwantedRecommendations": []
+}

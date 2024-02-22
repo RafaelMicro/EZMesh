@@ -21,6 +21,7 @@
 #define THREAD_SLEEP_NS     1000000L
 #define EZMESH_TRANSMIT_WINDOW 1
 #define SYMLINK_PATH        "pts_hci"
+#define DEFAULT_DAEMON      "ezmeshd_0"
 
 // ezmesh related structures
 static ezmesh_handle_t lib_handle;
@@ -30,6 +31,7 @@ static uint8_t data_to_ezmesh[TO_EZMESH_BUF_SIZE];
 static uint8_t data_from_ezmesh[FROM_EZMESH_BUF_SIZE];
 // ezmesh instance name
 static char ezmesh_instance[INST_NAME_LEN];
+static char virtual_device[INST_NAME_LEN];
 
 static int pty_m;
 static int pty_s;
@@ -103,19 +105,19 @@ uint32_t startup(void)
     {
         char *pName = ttyname(pty_s);
         printf("Name of secondary pty side is <%s>\n", pName);
-        if (access(SYMLINK_PATH, F_OK) == 0)
+        if (access(virtual_device, F_OK) == 0)
         {
-            if (remove(SYMLINK_PATH) != 0)
+            if (remove(virtual_device) != 0)
             {
                 printf("Error remove symlink file (%s): %s\n",
-                       SYMLINK_PATH, strerror(errno));
+                       virtual_device, strerror(errno));
             }
         }
 
-        if (symlink(pName, SYMLINK_PATH) != 0)
+        if (symlink(pName, virtual_device) != 0)
         {
             printf("Error creating symlink (%s): %s\n",
-                   SYMLINK_PATH, strerror(errno));
+                   virtual_device, strerror(errno));
         }
     }
     return ret;
@@ -185,8 +187,9 @@ int main(int argc, char *argv[])
     signal(SIGTERM, signal_handler);
 
     // Set device unique name if different from default
-    strcpy(ezmesh_instance, (argc > 1)? argv[1] : "ezmeshd_0");
-
+    strcpy(virtual_device, (argc > 1)? argv[1] : SYMLINK_PATH);
+    strcpy(ezmesh_instance, (argc > 2)? argv[2] : DEFAULT_DAEMON);
+    
     // Start EZMESH and PTY communication
     if (startup() < 0)
     {

@@ -156,8 +156,8 @@ static void del_socket(int ep, bool state) {
   if (state) ep_ctx[ep].pending_close = ep_ctx[ep].conn_count;
 }
 
-static bool handle_epoll_close(int fd_data_socket, uint8_t ep) {
-  
+static bool handle_epoll_close(int fd_data_socket, uint8_t ep) 
+{
   ez_socket_close_t *item, *next_item;
   ezmesh_croe_exange_buffer_t *buffer;
   bool notified = false;
@@ -317,12 +317,13 @@ static void EP_push_close_socket_pair(int fd_data_socket, int fd_ctrl_data_socke
 
 static bool EP_find_close_socket_pair(int fd_data_socket, int fd_ctrl_data_socket, uint8_t endpoint_number)
 {
-  
   ez_socket_close_t *item;
   ez_socket_close_t *next_item;
   bool found = false;
-  item = SLIST_ENTRY(ep_ctx[endpoint_number].ctl_socket_data, ez_socket_close_t, node);
   
+  item = SLIST_ENTRY(ep_ctx[endpoint_number].ctl_socket_data, ez_socket_close_t, node);
+  if(item==NULL) return found;
+
   do {
     next_item = SLIST_ENTRY((item)->node.node, ez_socket_close_t, node);
     if (item->fd_data_socket == fd_data_socket && item->socket_fd == fd_ctrl_data_socket)
