@@ -13,7 +13,7 @@ $ git submodule update --init --recursive
 
 ---
 
-## Configuration for Cross Compiler 
+## Configuration for Cross Compiler
 
 - Following define is impoortant feature for cross-compiler:
   - CONFIG_USE_CROSS_COMPILER: Using CROSS_COMPILER or not

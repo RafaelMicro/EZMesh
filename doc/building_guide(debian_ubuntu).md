@@ -106,6 +106,7 @@ $ sudo ./build/integrate/debian/border_router/setup
 ```markdown
 $ sudo ./build/integrate/debian/bluetooth/setup
 ```
+
 Note: </br>
 Please make sure your RCP dongle is already attached to the boot  </br>
 All services will auto setup on boot  </br>

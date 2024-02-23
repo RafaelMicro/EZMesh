@@ -2,9 +2,50 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Prepare Env",
+            "command": "sudo apt update && sudo apt install git mosquitto libsystemd-dev libprotobuf-dev protobuf-compiler libdbus-1-dev net-tools curl gcc",
+            "type": "shell",
+            "group": "none",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Install Cmake (x86)",
+            "command": "sudo curl -L https://github.com/Kitware/CMake/releases/download/v3.21.6/cmake-3.21.6-linux-x86_64.sh --output /tmp/cmake-3.21.6-linux-x86_64.sh && sudo chmod +x /tmp/cmake*.sh && sudo /tmp/cmake*.sh --prefix=/usr/local --skip-license && sudo rm /tmp/cmake*",
+            "type": "shell",
+            "group": "none",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Install Cmake (aarch64)",
+            "command": "sudo curl -L https://github.com/Kitware/CMake/releases/download/v3.21.6/cmake-3.21.6-linux-aarch64.sh --output /tmp/cmake-3.21.6-linux-aarch64.sh && sudo chmod +x /tmp/cmake*.sh && sudo /tmp/cmake*.sh --prefix=/usr/local --skip-license && sudo rm /tmp/cmake*",
+            "type": "shell",
+            "group": "none",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Border Router pre-install",
+            "command": "sudo NAT64=1 module/border_router/ot-br-posix/script/bootstrap",
+            "type": "shell",
+            "group": "none",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
             "label": "cmake all",
             "command": "cmake -B ${workspaceFolder}/build -S ${workspaceFolder} -DOTBR_INFRA_IF_NAME=enp0s3 -DCONFIG_GEN_SYSTEM=true -DCONFIG_GEN_SYSTEM=true -DCONFIG_CONTROLLER=true -DCONFIG_UPGRADE=true -DCONFIG_BLUETOOTH=true -DCONFIG_BORDER_ROUTER=true -DCONFIG_ZIGBEE_GW_SERVICE=true -DCONFIG_SUBG_SERVICE=true",
             "type": "shell",
+            "group": "none",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "cmake default",
+            "command": "cmake -B ${workspaceFolder}/build -S ${workspaceFolder}",
+            "type": "shell",
+            "group": "none",
             "isBackground": true,
             "problemMatcher": []
         },
@@ -12,6 +53,7 @@
             "label": "clean build",
             "command": "cmake --build ${workspaceFolder}/build --clean-first",
             "type": "shell",
+            "group": "none",
             "isBackground": true,
             "problemMatcher": []
         },
@@ -19,6 +61,7 @@
             "label": "build",
             "command": "cmake --build ${workspaceFolder}/build",
             "type": "shell",
+            "group": "none",
             "isBackground": true,
             "problemMatcher": []
         },
@@ -26,53 +69,117 @@
             "label": "install",
             "command": "sudo cmake --install ${workspaceFolder}/build/ && sudo ldconfig",
             "type": "shell",
+            "group": "none",
             "isBackground": true,
             "problemMatcher": []
         },
         {
-            "label": "start BT",
+            "label": "build install",
+            "type": "shell",
+            "group": "none",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "cmake all",
+                "clean build",
+                "install",
+            ]
+        },
+        {
+            "label": "[Test] Start ezmesh bluetooth endpoint",
             "command": "sudo ${workspaceFolder}/build/module/bluetooth/ez-bluetooth",
             "type": "shell",
             "isBackground": true,
-            "problemMatcher": []
+            "problemMatcher": [],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": true,
+                "clear": false
+            }
         },
-
         {
-            "label": "start ezmeshd",
-            "command": "sudo ./build/module/controller/ezmeshd -c ./module/controller/ez_config.ini",
+            "label": "[Test] Start ezmesh controller",
+            "command": "sudo ${workspaceFolder}/build/module/controller/ezmeshd -c ${workspaceFolder}/module/controller/ez_config.ini",
             "type": "shell",
             "isBackground": true,
-            "problemMatcher": []
+            "problemMatcher": [],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": true,
+                "clear": false
+            }
         },
         {
-            "label": "setup and build (all)",
+            "label": "[Build] Build Project (default)",
             "type": "shell",
             "command": "echo '============ END ============'",
             "dependsOrder": "sequence",
+            "group": "build",
             "dependsOn": [
                 "cmake all",
                 "build"
             ]
         },
         {
-            "label": "setup and clean build (all)",
+            "label": "[Build] Clean Build Project (default)",
             "type": "shell",
             "command": "echo '============ END ============'",
             "dependsOrder": "sequence",
+            "group": "build",
             "dependsOn": [
                 "cmake all",
                 "clean build"
             ]
         },
         {
-            "label": "Quick setup",
+            "label": "[Build] Build Project all module",
             "type": "shell",
             "command": "echo '============ END ============'",
             "dependsOrder": "sequence",
+            "group": "build",
             "dependsOn": [
                 "cmake all",
-                "build",
-                "install",
+                "build"
+            ]
+        },
+        {
+            "label": "[Build] Clean Build Project all module",
+            "type": "shell",
+            "command": "echo '============ END ============'",
+            "dependsOrder": "sequence",
+            "group": "build",
+            "dependsOn": [
+                "cmake all",
+                "clean build"
+            ]
+        },
+        {
+            "label": "[Setup] Project Prerequest install (x86_64)",
+            "type": "shell",
+            "command": "echo '============ END ============'",
+            "dependsOrder": "sequence",
+            "group": "build",
+            "dependsOn": [
+                "Prepare Env",
+                "Install Cmake (x86)"
+            ]
+        },
+        {
+            "label": "[Setup] Project Prerequest install (aarch64)",
+            "type": "shell",
+            "command": "echo '============ END ============'",
+            "dependsOrder": "sequence",
+            "group": "build",
+            "dependsOn": [
+                "Prepare Env",
+                "Install Cmake (aarch64)"
             ]
         },
     ],
