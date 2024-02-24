@@ -26,15 +26,12 @@ CMAKE_OPTIONS+= \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DOTBR_BORDER_AGENT=ON \
 	-DOTBR_BORDER_ROUTING=ON \
-	-DOTBR_INFRA_IF_NAME=\"br-lan\" \
+	-DOTBR_INFRA_IF_NAME="eth0" \
 	-DOTBR_MDNS="avahi" \
 	-DOTBR_OPENWRT=ON \
 	-DOTBR_SRP_ADVERTISING_PROXY=ON \
-	-DOT_FIREWALL=OFF \
 	-DOT_POSIX_SETTINGS_PATH=\"/etc/openthread\" \
 	-DOT_READLINE=OFF \
-	-DOTBR_WEB=OFF \
-	-DOTBR_NAT64=OFF \
 	-DNAT64_SERVICE=\"openthread\"
 TARGET_CFLAGS += -DOPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME=\\\"/tmp/openthread-%s\\\"
 
@@ -65,6 +62,24 @@ define Package/ezmesh/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/ot-ctl $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libezmesh.so.* $(1)/usr/lib/
+	
+	$(INSTALL_DIR) $(1)/etc/openthread
+	
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/etc/init.d/* $(1)/etc/init.d
+
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) $(PKG_INSTALL_DIR)/etc/config/* $(1)/etc/config
+
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/admin
+	$(INSTALL_BIN) $(LOCAL_SOURCE_DIR)/module/border_router/ot-br-posix/src/openwrt/controller/thread.lua $(1)/usr/lib/lua/luci/controller/admin
+
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view
+	$(CP) $(LOCAL_SOURCE_DIR)/module/border_router/ot-br-posix/src/openwrt/view/admin_thread $(1)/usr/lib/lua/luci/view
+
+	$(INSTALL_DIR) $(1)/www/luci-static/resources
+	$(CP) $(LOCAL_SOURCE_DIR)/module/border_router/ot-br-posix/src/openwrt/handle_error.js $(1)/www/luci-static/resources	
+	
 endef
 
 
