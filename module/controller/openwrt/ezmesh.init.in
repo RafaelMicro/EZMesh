@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+
+START=21
+
+USE_PROCD=1
+
+start_service()
+{
+
+    procd_open_instance
+    procd_set_param command /usr/bin/ezmeshd -c /usr/etc/ez_config.ini
+    sleep 2
+    procd_close_instance
+}
