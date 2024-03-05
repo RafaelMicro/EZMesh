@@ -6,10 +6,9 @@ The EZMesh SDK provides software source. It facilitates the easy development of 
 
 The EZMesh SDK contains support for running Zigbee, OpenThread, and Bluetooth on a Linux host, using only a single low-cost Radio Co-Processor (RCP) chip from Rafael Micro. This system allows for running multiple protocols simultaneously using the same RCP.
 
+![Matter_L](./doc/img/matter_logo.png)![Thread_L](./doc/img/Thread_logo_rgb.png)
+
 ![Zigbee_L](./doc/img/Zigbee_logo.png) ![BluetoothLE_L](./doc/img/Bluetooth_logo.png)
-
-![Thread_L](./doc/img/Thread_logo_rgb.png) ![Matter_L](./doc/img/matter_logo.png)
-
 
 **IoT Gateway reference design work with EZMesh SDK and Openwrt: [Super Gateway](https://github.com/RafaelMicro/SuperGateway).**
 
