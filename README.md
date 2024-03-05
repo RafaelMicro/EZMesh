@@ -8,11 +8,10 @@ The EZMesh Project is the Host Daemon of Rafael's EZmesh Dongle (Rafael Multi-pr
 
 The EZMesh currently supports:
 
-- **Bluetooth**
-- **Sub-G**
-- **Thread**
-- **Matter**
-- **Zigbee**
+![Zigbee_L](./doc/img/Zigbee_logo.png) ![BluetoothLE_L](./doc/img/Bluetooth_logo.png)
+
+![Thread_L](./doc/img/Thread_logo_rgb.png) ![Matter_L](./doc/img/matter_logo.png)
+
 
 **The EZMesh Project is supported by Rafael Micro URL: [EN](https://www.rafaelmicro.com/en/)/[TW](https://www.rafaelmicro.com/tw/).**
 
