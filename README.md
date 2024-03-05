@@ -1,4 +1,6 @@
 # EZMesh
+The EZMesh SDK provides software source. It facilitates the easy development of an IoT gateway based on the EZMesh SDK architecture.
+
 ![ezmsh](./doc/img/ezmesh_.png)
 ## Introduction
 
