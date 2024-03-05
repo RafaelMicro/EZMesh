@@ -11,6 +11,8 @@ The EZMesh SDK contains support for running Zigbee, OpenThread, and Bluetooth on
 ![Thread_L](./doc/img/Thread_logo_rgb.png) ![Matter_L](./doc/img/matter_logo.png)
 
 
+**IoT Gateway reference design work with EZMesh SDK and Openwrt: [Super Gateway](https://github.com/RafaelMicro/SuperGateway).**
+
 **The EZMesh Project is supported by Rafael Micro URL: [EN](https://www.rafaelmicro.com/en/)/[TW](https://www.rafaelmicro.com/tw/).**
 
 ---
