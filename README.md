@@ -1,5 +1,5 @@
 # EZMesh
-
+![ezmsh](./doc/img/ezmesh_.png)
 ## Introduction
 
 The EZMesh Project is the Host Daemon of Rafael's EZmesh Dongle (Rafael Multi-protocol RCP). The EZMesh, which uses a single Rafael's EZmesh Dongle, can support the Host OS using different communication protocols simultaneously.
