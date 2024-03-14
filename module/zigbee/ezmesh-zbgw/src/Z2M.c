@@ -98,7 +98,7 @@ static void Z2M_AEP(uint8_t *da, uint16_t len)
                     for(int i =0;i<EP_Count;i++)
                     {
                         ED[ED_Index].ep_list[i].ep =  da[4 + i];
-                        if( da[4 + i] > 0 &&  da[4 + i] < 10)
+                        if( da[4 + i] > 0 &&  da[4 + i] <= 0xF0)
                             gw_cmd_simple_desc_req(Shor_Address, ED[ED_Index].ep_list[i].ep);
                     }
                 }
