@@ -73,8 +73,8 @@ $ sudo NAT64=1 module/border_router/ot-br-posix/script/bootstrap
   **Note: clean build (add --clean-first flag on "cmake --build")**
 
 ### EZMesh modeules' configuration
+**Note: Using -DConfig on cmake session apply config**
 
-- **Note: Using -DConfig on cmake session apply config**
 |Module|Config|Description|Default|example|
 |:---:|:---|:---|:---:|:---|
 |Platfrom config|CONFIG_GEN_SYSTEM|Generate systemd setup (for Ubuntu or debian)|**false**|-DCONFIG_GEN_SYSTEM=true|
