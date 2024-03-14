@@ -19,7 +19,7 @@
 #define EZMESH_TRANSMIT_WINDOW 1
 
 #define DW_REQ_FIXED_LEN 35
-#define DW_REQ_PER_PKT_LEN 255
+#define DW_REQ_PER_PKT_LEN 127
 #define DW_REQ_PKT_OFFSET (DW_REQ_FIXED_LEN - 1)
 
 static void a_send_clear(void *p_data);
@@ -523,11 +523,11 @@ void *rx_handler(void *ptr)
         } else
         {
             timeout++;
-            if (timeout >= 10000)
+            if (timeout >= 1000)
             {
                 timeout = 1;
                 reset_ezmesh();
-                // fsm_event_post(&upgrade_fsm, E_UPGRADE_FILE_DOWNLOAD, NULL);
+                //fsm_event_post(&upgrade_fsm, E_UPGRADE_FILE_DOWNLOAD, NULL);
             }
         }
         nanosleep((const struct timespec[]){{ 0, THREAD_SLEEP_NS } }, NULL);
