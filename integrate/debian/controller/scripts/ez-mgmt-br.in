@@ -18,6 +18,7 @@ main()
     if have systemctl; then
         systemctl is-active ez-otbr && sudo systemctl stop ez-otbr
         systemctl is-active ezmeshd && sudo systemctl stop ezmeshd
+        sleep 3
         systemctl is-active ezmeshd || sudo systemctl start ezmeshd || die 'Failed to start ezmeshd!'
         systemctl is-active ez-otbr || sudo systemctl start ez-otbr || die 'Failed to start ez-otbr!'
     elif have service; then
