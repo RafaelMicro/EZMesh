@@ -18,6 +18,7 @@ main()
     if have systemctl; then
         systemctl is-active ez-bluetooth && sudo systemctl stop ez-bluetooth
         systemctl is-active ezmeshd && sudo systemctl stop ezmeshd
+        sleep 3
         systemctl is-active ezmeshd || sudo systemctl start ezmeshd || die 'Failed to start ezmeshd!'
         systemctl is-active ez-bluetooth || sudo systemctl start ez-bluetooth || die 'Failed to start ez-bluetooth'
     elif have service; then
