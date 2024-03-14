@@ -20,6 +20,7 @@ main()
         systemctl is-active ez-otbr && sudo systemctl stop ez-otbr
         systemctl is-active ezmeshd && sudo systemctl stop ezmeshd
         systemctl is-active ezmeshd || sudo systemctl start ezmeshd || die 'Failed to start ezmeshd!'
+        sleep 3
         systemctl is-active ez-otbr || sudo systemctl start ez-otbr || die 'Failed to start ez-otbr!'
         systemctl is-active ez-bluetooth || sudo systemctl start ez-bluetooth || die 'Failed to start ez-bluetooth'
     elif have service; then
