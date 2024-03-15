@@ -48,7 +48,7 @@ pkg_check_modules(PC_EXPAT QUIET expat)
 set(EXPAT_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/third_party/libexpat/expat)
 set(EXPAT_INCLUDE_DIRS ${EXPAT_INCLUDE_DIR})
 set(EXPAT_LIBRARY ${CMAKE_BINARY_DIR}/third_party/libexpat/expat)
-set(EXPAT_LIBRARIES ${EXPAT_LIBRARY})
+set(EXPAT_LIBRARIES expat)
 
 
 # Look for the header file.

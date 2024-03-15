@@ -1,38 +1,13 @@
 
-add_library(avahi-client SHARED)
-# target_stds(avahi-client C 99 POSIX 2008)
-target_link_libraries(avahi-client PRIVATE Interface::Warnings)
-target_include_directories(avahi-client PRIVATE 
-    "${CMAKE_BINARY_DIR}/third_party/dbus"
-    "${CMAKE_SOURCE_DIR}/third_party/dbus"
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-target_compile_definitions(avahi-client  PRIVATE -DHAVE_DBUS_CONNECTION_CLOSE=1)
-target_sources(avahi-client PRIVATE 
-    avahi-client/browser.c
-    avahi-client/client.h
-    avahi-client/entrygroup.c
-    avahi-client/lookup.h
-    avahi-client/publish.h
-    avahi-client/xdg-config.c 
-    avahi-client/check-nss.c
-    avahi-client/client.c
-    avahi-client/internal.h
-    avahi-client/resolver.c
-    avahi-client/xdg-config.h
-    "${CMAKE_BINARY_DIR}/third_party/dbus/config.h")
-
-set_target_properties(avahi-client PROPERTIES PUBLIC_HEADER 
-    "${CMAKE_CURRENT_SOURCE_DIR}/avahi-client/client.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/avahi-client/lookup.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/avahi-client/publish.h")
+set(DBUS_SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/dbus")
+set(DBUS_BINARY_DIR "${CMAKE_BINARY_DIR}/third_party/dbus")
 
 add_library(avahi-common SHARED)
 # target_stds(avahi-common C 99 POSIX 2008)
-target_link_libraries(avahi-common PRIVATE Interface::Warnings)
+target_link_libraries(avahi-common PRIVATE dbus-1)
 target_include_directories(avahi-common PRIVATE 
-    "${CMAKE_BINARY_DIR}/third_party/dbus"
-    "${CMAKE_SOURCE_DIR}/third_party/dbus"
+    "${DBUS_SOURCE_DIR}"
+    "${DBUS_BINARY_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_sources(avahi-common PRIVATE 
@@ -88,3 +63,31 @@ set_target_properties(avahi-common PROPERTIES PUBLIC_HEADER
     "${CMAKE_CURRENT_SOURCE_DIR}/avahi-common/llist.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/avahi-common/rlist.h")
 
+
+add_library(avahi-client SHARED)
+# target_stds(avahi-client C 99 POSIX 2008)
+target_link_libraries(avahi-client PRIVATE avahi-common)
+target_include_directories(avahi-client PRIVATE 
+    "${DBUS_SOURCE_DIR}"
+    "${DBUS_BINARY_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_compile_definitions(avahi-client PRIVATE -DHAVE_DBUS_CONNECTION_CLOSE=1)
+target_sources(avahi-client PRIVATE 
+    avahi-client/browser.c
+    avahi-client/client.h
+    avahi-client/entrygroup.c
+    avahi-client/lookup.h
+    avahi-client/publish.h
+    avahi-client/xdg-config.c 
+    avahi-client/check-nss.c
+    avahi-client/client.c
+    avahi-client/internal.h
+    avahi-client/resolver.c
+    avahi-client/xdg-config.h
+    "${CMAKE_BINARY_DIR}/third_party/dbus/config.h")
+
+set_target_properties(avahi-client PROPERTIES PUBLIC_HEADER 
+    "${CMAKE_CURRENT_SOURCE_DIR}/avahi-client/client.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/avahi-client/lookup.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/avahi-client/publish.h")

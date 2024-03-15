@@ -3,7 +3,7 @@
 	url = https://github.com/protocolbuffers/protobuf.git
 [submodule "third_party/dbus"]
 	path = third_party/dbus
-	url = https://github.com/d-bus/dbus.git
+	url = https://gitlab.freedesktop.org/dbus/dbus.git
 [submodule "third_party/libexpat"]
 	path = third_party/libexpat
 	url = https://github.com/libexpat/libexpat.git

@@ -15,7 +15,13 @@ add_compile_options(-Wno-unused-but-set-variable)
 set(ot-br-posix_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ot-br-posix)
 set(openthread_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/openthread)
 
-
+if(${CONFIG_USE_CROSS_COMPILER})
+include_directories(
+  "${CMAKE_SOURCE_DIR}/third_party/avahi"
+  "${CMAKE_SOURCE_DIR}/third_party/protobuf/src"
+  "${CMAKE_SOURCE_DIR}/third_party/protobuf/src/google"
+)
+endif()
 # Install compile-time configuration constants header file
 file(GLOB POSIX_CONFIG_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/openthread-core-rafael-posix-config.h")
 file(COPY ${POSIX_CONFIG_HEADERS} DESTINATION ${openthread_SOURCE_DIR}/src/posix/platform)

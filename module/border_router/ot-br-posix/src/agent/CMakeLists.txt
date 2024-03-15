@@ -103,8 +103,10 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/otbr-agent.default
     RENAME otbr-agent
 )
 
-pkg_check_modules(LIBSYSTEMD libsystemd)
-if(LIBSYSTEMD_FOUND)
-    target_compile_definitions(otbr-config INTERFACE "HAVE_LIBSYSTEMD=1")
-    target_link_libraries(otbr-agent PUBLIC ${LIBSYSTEMD_LIBRARIES})
+if(NOT ${CONFIG_USE_CROSS_COMPILER})
+    pkg_check_modules(LIBSYSTEMD libsystemd)
+    if(LIBSYSTEMD_FOUND)
+        target_compile_definitions(otbr-config INTERFACE "HAVE_LIBSYSTEMD=1")
+        target_link_libraries(otbr-agent PUBLIC ${LIBSYSTEMD_LIBRARIES})
+    endif()
 endif()
