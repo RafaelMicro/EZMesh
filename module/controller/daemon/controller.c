@@ -23,15 +23,17 @@
 
 #include "utility/config.h"
 #include "utility/log.h"
-#include "host/hal_sleep.h"
 #include "utility/utility.h"
 
-#include "controller.h"
-#include "host/hal_epoll.h"
 #include "primary/primary.h"
 #include "daemon/hdlc/core.h"
 
+#include "host/hal_sleep.h"
+#include "host/hal_epoll.h"
 #include "host/hal_kill.h"
+#include "host/hal_uart.h"
+
+#include "controller.h"
 
 #include "version.h"
 
@@ -167,6 +169,7 @@ static void __controller_set_reset_mode_callback(sys_cmd_handle_t *handle,
         log_info("Failed to connect, agent seems unresponsive");
         ignore_reset_reason = false;
         reset_sequence_state = E_SET_REBOOT_MODE;
+        hal_uart_change_baudrate();
         break;}
     default:{
         FATAL("Unhandled __controller_set_reset_mode_callback status");

@@ -65,12 +65,14 @@ static int fd_uart;
 static int fd_cpcd;
 static int fd_cpcd_notify;
 static int fd_stop;
+static int fd_dev_uart;
 static unsigned int drv_baudrate = 0;
 static pthread_t rx_drv_thread;
 static pthread_t tx_drv_thread;
 static pthread_t cleanup_thread;
 
-uartConfig_t uart_config[] = {
+static size_t g_uart_baudrate_idx = 0;
+static uartConfig_t uart_config[] = {
     { 9600,    B9600 },
     { 115200,  B115200 },
     { 500000,  B500000 },
@@ -340,6 +342,30 @@ void hal_uart_assert_rts(bool assert)
     CHECK_ERROR(ioctl(fd_uart, (assert)? TIOCMBIS : TIOCMBIC, &flag) < 0);
 }
 
+void hal_uart_change_baudrate(void)
+{
+    struct termios tty = {0};
+    int sym_baudrate = -1;
+
+    CHECK_ERROR(fd_dev_uart < 0);
+    CHECK_ERROR(tcgetattr(fd_dev_uart, &tty) < 0);
+
+    g_uart_baudrate_idx++;
+    g_uart_baudrate_idx %=4;
+
+    log_info("change baudrate %d", uart_config[g_uart_baudrate_idx].val);
+
+    sym_baudrate = uart_config[g_uart_baudrate_idx].symbolic;
+
+    cfsetispeed(&tty, (speed_t)sym_baudrate);
+    cfsetospeed(&tty, (speed_t)sym_baudrate);
+    cfmakeraw(&tty);
+
+    CHECK_ERROR(tcsetattr(fd_dev_uart, TCSANOW, &tty) < 0);
+
+    drv_baudrate = uart_config[g_uart_baudrate_idx].val;    
+}
+
 pthread_t hal_uart_init(int *fd_to_cpcd, int *fd_notify_cpcd, const char *device, unsigned int baudrate, bool hardflow)
 {
     int fd_sockets[2];
@@ -386,16 +412,20 @@ int hal_uart_open(const char *device, unsigned int baudrate, bool hardflow)
 {
     struct termios tty = {0};
     int sym_baudrate = -1;
-    int fd = 0;
 
     log_info("opening %s", device);
-    fd = open(device, O_RDWR | O_CLOEXEC);
-    CHECK_ERROR(fd < 0);
-    CHECK_ERROR(tcgetattr(fd, &tty) < 0);
+    fd_dev_uart = open(device, O_RDWR | O_CLOEXEC);
+    CHECK_ERROR(fd_dev_uart < 0);
+    CHECK_ERROR(tcgetattr(fd_dev_uart, &tty) < 0);
 
     for (size_t i = 0; i < sizeof(uart_config) / sizeof(uartConfig_t); i++)
     {
-        if (uart_config[i].val == baudrate) sym_baudrate = uart_config[i].symbolic;
+        if (uart_config[i].val == baudrate) 
+        {
+            sym_baudrate = uart_config[i].symbolic;
+            g_uart_baudrate_idx = i;
+            break;
+        }
     }
 
     if (sym_baudrate < 0) log_info("wrong baudrate: %d", baudrate);
@@ -416,10 +446,6 @@ int hal_uart_open(const char *device, unsigned int baudrate, bool hardflow)
     tty.c_cflag |= CLOCAL;
     tty.c_cflag = hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag & ~CRTSCTS); 
 
-    CHECK_ERROR(tcsetattr(fd, TCSANOW, &tty) < 0);
-
-    hal_sleep_ms(10);
-    tcflush(fd, TCIOFLUSH);
-
-    return fd;
+    CHECK_ERROR(tcsetattr(fd_dev_uart, TCSANOW, &tty) < 0);
+    return fd_dev_uart;
 }
