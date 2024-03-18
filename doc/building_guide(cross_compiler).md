@@ -4,11 +4,37 @@
 
 ## Project setup
 
+## Prepare Env
+
+```markdown
+$ sudo apt update && sudo apt install -y git curl make build-essential pkg-config libdbus-1-dev libprotobuf-dev protobuf-compiler
+```
+
+---
+
 ### Clone EZMesh and Checkout submodule
 
 ```markdown
 $ git clone https://github.com/RafaelMicro/EZMesh.git
 $ git submodule update --init --recursive
+```
+
+---
+
+### Install Cmake
+
+- Ubuntu-based platform
+  
+```markdown
+$ sudo curl -L https://github.com/Kitware/CMake/releases/download/v3.21.6/cmake-3.21.6-linux-x86_64.sh --output /tmp/cmake-3.21.6-linux-x86_64.sh \
+    && sudo chmod +x /tmp/cmake*.sh && sudo /tmp/cmake*.sh --prefix=/usr/local --skip-license && sudo rm /tmp/cmake*
+```
+
+- Debian-based platform
+  
+```markdown
+$ sudo curl -L https://github.com/Kitware/CMake/releases/download/v3.21.6/cmake-3.21.6-linux-aarch64.sh --output /tmp/cmake-3.21.6-linux-aarch64.sh \
+    && sudo chmod +x /tmp/cmake*.sh && sudo /tmp/cmake*.sh --prefix=/usr/local --skip-license && sudo rm /tmp/cmake*
 ```
 
 ---
@@ -41,7 +67,7 @@ $ cmake -B build -S . \
  -DCONFIG_BORDER_ROUTER=true -DCONFIG_ZIGBEE_GW_SERVICE=true -DCONFIG_SUBG_SERVICE=true \
  -DOTBR_DBUS=ON -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr \
  -DOTBR_BORDER_AGENT=ON -DOTBR_BORDER_ROUTING=ON -DOTBR_INFRA_IF_NAME=\"br-lan\" \
- -DOTBR_MDNS="avahi"-DOTBR_OPENWRT=OFF-DOTBR_SRP_ADVERTISING_PROXY=ON \
+ -DOTBR_MDNS="avahi" -DOTBR_OPENWRT=OFF -DOTBR_SRP_ADVERTISING_PROXY=ON \
  -DOT_FIREWALL=ON -DOT_POSIX_SETTINGS_PATH=\"/etc/openthread\" \
  -DOT_READLINE=OFF -DOTBR_INFRA_IF_NAME=br-lan -DOTBR_WEB=OFF \
  -DCONFIG_USE_CROSS_COMPILER=ON \

@@ -5,7 +5,7 @@
 ## Prepare Env
 
 ```markdown
-$ sudo apt update && sudo apt install git mosquitto libsystemd-dev libprotobuf-dev protobuf-compiler libdbus-1-dev net-tools curl gcc
+$ sudo apt update && sudo apt install -y git mosquitto libsystemd-dev libprotobuf-dev protobuf-compiler libdbus-1-dev net-tools curl gcc
 ```
 
 ---
