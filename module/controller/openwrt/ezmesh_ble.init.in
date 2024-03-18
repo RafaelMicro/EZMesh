@@ -7,7 +7,7 @@ USE_PROCD=1
 start_service()
 {
     procd_open_instance
-    procd_set_param command /usr/bin/ez-bluetooth -c /tmp/pts_hci
+    procd_set_param command /usr/bin/ez-bluetooth /tmp/pts_hci
     procd_set_param respawn
     procd_set_param pidfile /var/run/ez-bluetooth.pid        
     procd_close_instance
