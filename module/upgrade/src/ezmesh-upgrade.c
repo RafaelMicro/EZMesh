@@ -14,12 +14,12 @@
 #define INST_NAME_LEN 100
 #define RETRY_COUNT 10
 #define EZMESH_RETRY_SLEEP_NS 100000000L
-#define EZMESH_RESET_SLEEP_NS 10000L
-#define THREAD_SLEEP_NS 1000000L
+#define EZMESH_RESET_SLEEP_NS 10000000L
+#define THREAD_SLEEP_NS 10000000L
 #define EZMESH_TRANSMIT_WINDOW 1
 
 #define DW_REQ_FIXED_LEN 35
-#define DW_REQ_PER_PKT_LEN 127
+#define DW_REQ_PER_PKT_LEN 0x100
 #define DW_REQ_PKT_OFFSET (DW_REQ_FIXED_LEN - 1)
 
 static void a_send_clear(void *p_data);
@@ -131,7 +131,7 @@ static const fsm_const_descriptor_t upgrade_fsm_descriptor =
 static fsm_t upgrade_fsm;
 static FILE *fp;
 static size_t file_size = 0, total_pkt = 0;
-static size_t g_pkt_size = 0x160;
+static size_t g_pkt_size = 0x1C0;
 static int current_pkt = 0;
 static bool cnt_check = 0;
 // ezmesh related structures
@@ -482,7 +482,7 @@ void *rx_handler(void *ptr)
         size = libezmesh_read_ep(endpoint,
                               &data_from_ezmesh[0],
                               FROM_EZMESH_BUF_SIZE,
-                              EP_READ_FLAG_NON_BLOCKING);
+                              EP_READ_FLAG_NONE);
         if (size > 0)
         {
             pt_pd = (gateway_cmd_pd *)&data_from_ezmesh[5];
@@ -510,7 +510,7 @@ void *rx_handler(void *ptr)
                     fsm_event_post(&upgrade_fsm, E_UPGRADE_FINISH, NULL);
                 } else
                 {
-                    // nanosleep((const struct timespec[]){{0, 10000000}}, NULL);
+                    nanosleep((const struct timespec[]){{0, 5000000}}, NULL);
                     fsm_event_post(&upgrade_fsm, E_UPGRADE_FILE_DOWNLOAD, NULL);
                 }
             } else if (cmd_index == 0xF0008002)
