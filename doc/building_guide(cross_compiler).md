@@ -15,8 +15,7 @@ $ sudo apt update && sudo apt install -y git curl make build-essential pkg-confi
 ### Clone EZMesh and Checkout submodule
 
 ```markdown
-$ git clone https://github.com/RafaelMicro/EZMesh.git
-$ git submodule update --init --recursive
+$ git clone https://github.com/RafaelMicro/EZMesh.git --recurse-submodules
 ```
 
 ---
