@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/ioctl.h>
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
@@ -59,37 +60,48 @@ static void signal_handler(int sig)
 	run = false;
 }
 
+bool kbhit()
+{
+    int byteswaiting;
+    ioctl(0, FIONREAD, &byteswaiting);
+    return byteswaiting > 0;
+}
 
 void* Task_Console_Key_Event(void* arg)
 {
-    static char  ReadkeyEvent[20];
+    // static char  ReadkeyEvent[20];
     //----------------------------
     while(run)
     {
-         //ReadkeyEvent= getchar();
-         scanf("%s",ReadkeyEvent);
-         switch(ReadkeyEvent[0])
-         {
-            case 'p':
-			switch(ReadkeyEvent[1])
+		// ReadkeyEvent= getchar();
+		// scanf("%s",ReadkeyEvent);
+		if (kbhit())
+		{
+			int ch = getchar();
+			switch(ch)
 			{
+			case 'p':
+				ch = getchar();
+				switch(ch)
+				{
 				case 'j':
 					printf(LIGHT_BLUE"Set Coordinator Permit Join\n"NONE);
 
 					gw_cmd_pj();
 					break;
-			}
-			break;
+				}
+				break;
 
 			case 'd' :
-			show_dev_info();
-			break;
-            default :
-            	break;
-         }
-         usleep(1000000); //1ms
-    }
-    printf("[Task_Console_Key_Event] close .... \n"); 
+				show_dev_info();
+				break;
+			default :
+				break;
+			}
+			usleep(1000000); //1ms
+    	}
+	}
+	printf("[Task_Console_Key_Event] close .... \n"); 
 }
 
 void* Task_System(void* arg)
