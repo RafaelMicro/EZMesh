@@ -167,6 +167,48 @@ void tcp_server_send(uint8_t *s, uint16_t len)
 	}
 }
 
+bool gateway_command_check(unsigned char* buf, unsigned int len)
+{
+	unsigned int command_header = (buf[0] << 24) |
+								  (buf[1] << 16) |
+								  (buf[2] << 8)  |
+								   buf[3];
+
+	if (command_header != 0xFFFCFCFF)
+	{
+		printf("Header Error\r\n");
+		return false;
+	}
+
+	if (len != 4+buf[4]+1+1)
+	{
+		printf("Length Error\r\n");
+		printf("received len: %d\r\n", len);
+		return false;
+	}
+
+	unsigned char checksum = 0;
+	unsigned char *ptr;
+
+	ptr = &buf[4];
+	for (unsigned int i = 0; i < 1 + buf[4]; i++)
+	{
+		checksum += *ptr;
+		ptr++;
+	}
+	checksum = ~checksum;
+	checksum &= 0xFF;
+	if (*ptr != checksum)
+	{
+		printf("Checksum Error\r\n");
+		printf("expected: %02x\r\n", checksum);
+		printf("received: %02x\r\n", *ptr);
+		return false;
+	}
+
+	return true;
+}
+
 void *connection_handler(void *arg)
 {
 	char buffer[TCP_BUFSIZ];
@@ -185,6 +227,18 @@ void *connection_handler(void *arg)
 			buffer[bytes_read] = 0;
 			printf("Received message from %s: %d\n",
 				inet_ntoa(client_addr.sin_addr), htons(client_addr.sin_port));
+
+			// for (int i = 0; i < bytes_read; i++)
+			// {
+			// 	printf("%02x ", buffer[i]);
+			// }
+			// printf("\r\n");
+
+			if (!gateway_command_check(buffer, bytes_read))
+			{
+				continue;
+			}
+
 			printf("Start save data to ring buffer....\n");
 			Queue_RX_Write(buffer, bytes_read);
 		}
