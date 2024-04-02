@@ -10,6 +10,9 @@
 #include <string.h>
 #include <signal.h>
 
+ #include "progressbar.h"
+ #include "statusbar.h"
+
 #define FROM_EZMESH_BUF_SIZE LIB_EZMESH_READ_MINIMUM_SIZE
 #define INST_NAME_LEN 100
 #define RETRY_COUNT 10
@@ -151,6 +154,8 @@ static volatile bool run = true;
 // signal if the controller was reset
 static volatile bool has_reset = false;
 
+static progressbar *pDownloadBar;
+
 static void reset_cb(void);
 
 // two worker threads
@@ -256,12 +261,12 @@ static void a_send_image(void *p_data)
 
             libezmesh_write_ep(endpoint, &ota_download_request_cmd[0], pkt_len, 0);
 
-            printf("------------------------ >>>> GW      ------------------------\n");
-            _log_mem(" ", ota_download_request_cmd, pkt_len);
+            //printf("------------------------ >>>> GW      ------------------------\n");
+            //_log_mem(" ", ota_download_request_cmd, pkt_len);
 
             return;
         }
-        printf("current_pkt %d\n", current_pkt);
+        //printf("current_pkt %d\n", current_pkt);
 
         memcpy(&ota_download_request_cmd[20], (unsigned char *)&file_size, 4);
         total_pkt = file_size / g_pkt_size + ((file_size % g_pkt_size != 0) ? 1 : 0);
@@ -273,7 +278,7 @@ static void a_send_image(void *p_data)
 
         if (rt != 1)
         {
-            printf("rt %ld\n", rt);
+            //printf("rt %ld\n", rt);
             system("pause");
         }
 
@@ -284,8 +289,8 @@ static void a_send_image(void *p_data)
 
         libezmesh_write_ep(endpoint, &ota_download_request_cmd[0], pkt_len, 0);
 
-        printf("------------------------ >>>> GW      ------------------------\n");
-        _log_mem(" ", ota_download_request_cmd, pkt_len);
+        //printf("------------------------ >>>> GW      ------------------------\n");
+        //_log_mem(" ", ota_download_request_cmd, pkt_len);
         cnt_check = 0;
     }
 }
@@ -337,7 +342,6 @@ uint32_t startup(void)
         perror("ezmesh_open_ep ");
         return ret;
     }
-    printf("Endpoint opened\n");
 
     return ret;
 }
@@ -430,6 +434,7 @@ int main(int argc, char *argv[])
     printf("Image : %s size %ld, Total Pkt %ld\n", argv[1], file_size, total_pkt);
     fsm_init(&upgrade_fsm, &upgrade_fsm_descriptor);
 
+    pDownloadBar = progressbar_new("Download",total_pkt);
     // Start EZMESH and PTY communication
     if (startup() < 0)
     {
@@ -490,7 +495,6 @@ void *rx_handler(void *ptr)
 
             if (cmd_index == 0xF0008000)
             {
-                printf("state: E_UPGRADE_FILE_DOWNLOAD\n");
                 fsm_event_post(&upgrade_fsm, E_UPGRADE_FILE_DOWNLOAD, NULL);
             } else if (cmd_index == 0xF0008001)
             {
@@ -499,15 +503,19 @@ void *rx_handler(void *ptr)
                 rsp_cnt = (unsigned char)pt_pd->parameter[0] | ((unsigned char)pt_pd->parameter[1] << 8) |
                           ((unsigned char)pt_pd->parameter[2] << 16) | ((unsigned char)pt_pd->parameter[3] << 24);
 
-                printf("rsp_cnt %d current_pkt %d\n", rsp_cnt, current_pkt);
                 if (rsp_cnt == current_pkt)
+                {
                     cnt_check = 1;
+                    progressbar_inc(pDownloadBar);
+                }
                 else
                     cnt_check = 0;
 
                 if (current_pkt == (total_pkt - 1))
                 {
                     fsm_event_post(&upgrade_fsm, E_UPGRADE_FINISH, NULL);
+                    progressbar_finish(pDownloadBar);
+                    printf("Download Compelete");
                 } else
                 {
                     nanosleep((const struct timespec[]){{0, 5000000}}, NULL);

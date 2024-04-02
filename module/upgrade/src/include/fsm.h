@@ -25,7 +25,7 @@
 #include <stdbool.h>
 #include "fsm_assist.h"
 
-#define FSM_DEBUG 1
+#define FSM_DEBUG 0
 
 /**
  * @brief   Fixed-sized type for FSM state ID.

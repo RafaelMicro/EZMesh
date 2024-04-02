@@ -169,7 +169,7 @@ static void __controller_set_reset_mode_callback(sys_cmd_handle_t *handle,
         log_info("Failed to connect, agent seems unresponsive");
         ignore_reset_reason = false;
         reset_sequence_state = E_SET_REBOOT_MODE;
-        hal_uart_change_baudrate();
+        //hal_uart_change_baudrate();
         break;}
     default:{
         FATAL("Unhandled __controller_set_reset_mode_callback status");
