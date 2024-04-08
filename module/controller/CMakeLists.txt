@@ -8,7 +8,6 @@ set(EZMESH_PROTOCOL_VERSION "${EZMESHD_POTOCOL}")
 set(TARGET_GROUP release CACHE STRING "Group to build")
 option(WARN_AS_ERROR "Treat warnings as errors")
 
-set(EZMESH_CRC_0 0)
 if (DEFINED EZMESH_CRC_0)
   message(STATUS "Using EZMESH_CRC_0")
   add_definitions(-DEZMESH_CRC_0=${EZMESH_CRC_0})

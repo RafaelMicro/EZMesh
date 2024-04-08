@@ -463,8 +463,12 @@ static void handle_main_node_event(ez_epoll_t *p_data) {
   break;
 
   case EXCHANGE_SET_PID_QUERY:{
-    log_info("Received set PID");
     bool can_connect = true;
+    ctrl_socket_data_list_t *item;
+
+    item = SLIST_ENTRY(p_data, ctrl_socket_data_list_t, data_socket_epoll_port_data);
+    item->pid = *(pid_t *)interface_buffer->payload;
+    
     memcpy(interface_buffer->payload, &can_connect, sizeof(bool));
     CHECK_ERROR(buffer_len < sizeof(bool));
     SEND_DATA_TO_CORE(ret, fd, interface_buffer, buffer_len);
