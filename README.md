@@ -35,7 +35,7 @@ Currently, the EZMesh supports many building methods:
 - Debian/Ubuntu: please follow [building_guide(debian_ubuntu)](doc/building_guide(debian_ubuntu).md) (<https://github.com/RafaelMicro/EZMesh/blob/master/doc/building_guide(debian_ubuntu).md>)
 - OpenWRT: please follow [building_guide(OpenWRT)](doc/building_guide(OpenWRT).md) (<https://github.com/RafaelMicro/EZMesh/blob/master/doc/building_guide(OpenWRT).md>)
 - Cross Compiler: please follow [building_guide(cross_compiler)](doc/building_guide(cross_compiler).md) (<https://github.com/RafaelMicro/EZMesh/blob/master/doc/building_guide(cross_compiler).md>)
-
+- EZMesh Agent : please follow [building guide(EZMesh Agent)](https://github.com/RafaelMicro/EZMesh/blob/master/EZMesh-Agent/Src/README.md)
 ---
 
 ## Directory Structure
