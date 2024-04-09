@@ -1,6 +1,8 @@
 # How to Build EZMesh-Agent
 
-`cd examples/multi_protocol_rcp`
+`git submodule update --init`
+
+`cd EZMesh-Agent/Src/Rafael-IoT-SDK/examples/multi_protocol_rcp`
 
 * Enable Zigbee Gateway NCP + Bluetooth LE HCI + Openthread RCP
 
