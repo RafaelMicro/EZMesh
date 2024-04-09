@@ -7,8 +7,9 @@
 `rm -rf build_out`
 
 1. Dongle Board (Console :UART1/ EZMesh port :UART0)
+
    `./en_zb_ncp rt582 dongle`
-2. EVK Board (Console :UART0/ EZMesh port :UART1)
+3. EVK Board (Console :UART0/ EZMesh port :UART1)
 
    `./en_zb_ncp rt582 evb`
 
@@ -17,8 +18,9 @@
 `rm -rf build_out`
 
 1. Dongle Board (Console :UART1/ EZMesh port :UART0)
+
    `./hci_ot_rcp rt582 dongle`
-2. EVK Board (Console :UART0/ EZMesh port :UART1)
+3. EVK Board (Console :UART0/ EZMesh port :UART1)
 
    `./hci_ot_rcp rt582 evb`
 
