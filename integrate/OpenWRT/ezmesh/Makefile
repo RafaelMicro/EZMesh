@@ -40,7 +40,7 @@ define Package/ezmesh
 	TITLE:=EZMesh
 	SECTION:=net
 	CATEGORY:=Network
-	DEPENDS:= +libstdcpp +jsoncpp +libjson-c +libubus +libblobmsg-json +libavahi-client +avahi-daemon +iptables-mod-extra +ipset
+	DEPENDS:= +libstdcpp +jsoncpp +libjson-c +libubus +libncurses +libblobmsg-json +libavahi-client +avahi-daemon +iptables-mod-extra +ipset
 endef
 
 define Package/ezmesh/description
