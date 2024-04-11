@@ -10,7 +10,8 @@
 * on the command line (to stderr).
 */
 
-#include <termcap.h>  /* tgetent, tgetnum */
+// #include <termcap.h>  /* tgetent, tgetnum */
+#include "termcap/termcap.h"  /* tgetent, tgetnum */
 #include <assert.h>
 #include <limits.h>
 #include "progressbar.h"

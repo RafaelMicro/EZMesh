@@ -1,4 +1,11 @@
-add_executable(ezmesh-upgrade src/ezmesh-upgrade.c src/fsm.c src/progressbar/progressbar.c src/progressbar/statusbar.c)
+add_executable(ezmesh-upgrade 
+  src/ezmesh-upgrade.c 
+  src/fsm.c 
+  src/progressbar/progressbar.c 
+  src/progressbar/statusbar.c
+  src/termcap/termcap.c
+)
+
 target_link_libraries(ezmesh-upgrade
   ezmesh
   util
@@ -11,6 +18,7 @@ target_include_directories(ezmesh-upgrade PRIVATE
   ${EZMESH_SOURCE_DIR}/library
   src/include
   src/include/progressbar
+  src/include/termcap
 )
 
 ext_install( "TARGET_RUNTIME" ezmesh-upgrade "bin" ezmesh-upgrade)
