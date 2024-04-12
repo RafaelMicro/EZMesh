@@ -10,7 +10,7 @@ target_link_libraries(ezmesh-upgrade
   ezmesh
   util
   pthread
-  ncurses
+  # ncurses
 )
 
 get_target_property(EZMESH_SOURCE_DIR ezmesh SOURCE_DIR)
