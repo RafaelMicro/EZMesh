@@ -11,6 +11,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h>
+#include <sys/time.h>
 
 
 typedef struct {
@@ -18,6 +19,7 @@ typedef struct {
   const char *fmt;
   const char *file;
   struct tm *time;
+  struct timeval tv;
   void *udata;
   int line;
   int level;
