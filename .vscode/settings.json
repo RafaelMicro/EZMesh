@@ -61,7 +61,8 @@
         "primary.h": "c",
         "primary_cpcd.h": "c",
         "sys_callbacks.h": "c",
-        "version.h": "c"
+        "version.h": "c",
+        "unistd.h": "c"
     },
     "C_Cpp.dimInactiveRegions": false,
     "cmake.configureOnOpen": false

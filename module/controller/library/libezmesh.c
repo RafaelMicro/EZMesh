@@ -348,21 +348,20 @@ int libezmesh_init(ezmesh_handle_t *handle, const char *instance_name, ezmesh_re
         SET_EZMESH_RET(-errno);
         goto close_ctrl_sock_fd;
     }
+    // tmp_ret = check_version(lib_handle);
+    // if (tmp_ret < 0)
+    // {
+    //     SET_EZMESH_RET(tmp_ret);
+    //     goto close_ctrl_sock_fd;
+    // }
 
-    tmp_ret = check_version(lib_handle);
-    if (tmp_ret < 0)
-    {
-        SET_EZMESH_RET(tmp_ret);
-        goto close_ctrl_sock_fd;
-    }
+    // tmp_ret = get_agent_app_version(lib_handle);
 
-    tmp_ret = get_agent_app_version(lib_handle);
-
-    if (tmp_ret < 0)
-    {
-        SET_EZMESH_RET(tmp_ret);
-        goto close_ctrl_sock_fd;
-    }
+    // if (tmp_ret < 0)
+    // {
+    //     SET_EZMESH_RET(tmp_ret);
+    //     goto close_ctrl_sock_fd;
+    // }
 
     tmp_ret = set_pid(lib_handle);
     if (tmp_ret < 0)
@@ -394,7 +393,6 @@ int libezmesh_init(ezmesh_handle_t *handle, const char *instance_name, ezmesh_re
         SET_EZMESH_RET(-tmp_ret);
         goto close_ctrl_sock_fd;
     }
-
     lib_handle->initialized = true;
     handle->ptr = (void *)lib_handle;
     RETURN_EZMESH_RET;
@@ -524,7 +522,7 @@ int libezmesh_open_ep(ezmesh_handle_t handle, ezmesh_ep_t *endpoint, uint8_t id,
 
     lib_handle = (ezmesh_handle_inst_t *)handle.ptr;
 
-    if (tx_win_size != 1)
+    if (tx_win_size > 10)
     {
         SET_EZMESH_RET(-EINVAL);
         RETURN_EZMESH_RET;

@@ -180,12 +180,20 @@ static void __hal_uart_proc(void)
     ssize_t rval = 0;
     ssize_t wval = 0;
     struct timespec t = {0};
+    struct timeval now;
+    static struct timeval last ={0}; 
 
     rval = read(fd_cpcd, uart_buffer, sizeof(uart_buffer));
     CHECK_ERROR(rval < 0);
 
+    gettimeofday(&now, NULL);
+    log_info("%ld", (uint64_t)now.tv_sec * 1000*1000 + (uint64_t)now.tv_usec);
+
     // log_info_hexdump("[uart tx]", uart_buffer, rval);
+    if(((uint64_t)now.tv_sec * 1000*1000 + (uint64_t)now.tv_usec) - ((uint64_t)last.tv_sec * 1000*1000 + (uint64_t)last.tv_usec) < 2000)
+        nanosleep((const struct timespec[]){{0, 1000000}}, NULL);
     wval = write(fd_uart, uart_buffer, (size_t)rval);
+    last = now;
     CHECK_ERROR(wval < 0);
     CHECK_ERROR((size_t)wval != (size_t)rval);
 
@@ -327,7 +335,10 @@ static void *__hal_uart_receive_thd(void *arg)
 
         for (int i = 0; i < cnt; i++)
         {
-            if (fd_uart == event[i].data.fd) __hal_uart_proc_fd();
+            if (fd_uart == event[i].data.fd)
+            {
+                __hal_uart_proc_fd();
+            }
             else if (fd_stop == event[i].data.fd) running = true;
         }
     }
@@ -412,6 +423,7 @@ pthread_t hal_uart_init(int *fd_to_cpcd, int *fd_notify_cpcd, const char *device
 int hal_uart_open(const char *device, unsigned int baudrate, bool hardflow)
 {
     struct termios tty = {0};
+    struct serial_struct serial;
     int sym_baudrate = -1;
 
     log_info("opening %s", device);
@@ -438,15 +450,18 @@ int hal_uart_open(const char *device, unsigned int baudrate, bool hardflow)
     drv_baudrate = baudrate;
 
     // Nonblocking
-    tty.c_cc[VTIME] = 0;
-    tty.c_cc[VMIN] = 1;
-    tty.c_iflag &= (unsigned)~(IXON);
-    tty.c_iflag &= (unsigned)~(IXOFF);
-    tty.c_iflag &= (unsigned)~(IXANY);
-    tty.c_cflag &= (unsigned)~(HUPCL);
-    tty.c_cflag |= CLOCAL;
-    tty.c_cflag = hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag & ~CRTSCTS); 
+    // tty.c_cc[VTIME] = 0;
+    // tty.c_cc[VMIN] = 1;
+    // tty.c_iflag &= (unsigned)~(IXON);
+    // tty.c_iflag &= (unsigned)~(IXOFF);
+    // tty.c_iflag &= (unsigned)~(IXANY);
+    // tty.c_cflag &= (unsigned)~(HUPCL);
+    // tty.c_cflag |= CLOCAL;
+    // tty.c_cflag = hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag & ~CRTSCTS); 
 
     CHECK_ERROR(tcsetattr(fd_dev_uart, TCSANOW, &tty) < 0);
+    ioctl(fd_dev_uart, TIOCGSERIAL, &serial);
+    serial.flags |= ASYNC_LOW_LATENCY;
+    ioctl(fd_dev_uart, TIOCSSERIAL, &serial);
     return fd_dev_uart;
 }

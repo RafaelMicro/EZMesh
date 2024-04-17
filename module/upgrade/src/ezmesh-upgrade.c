@@ -518,7 +518,7 @@ void *rx_handler(void *ptr)
                     printf("Download Compelete");
                 } else
                 {
-                    nanosleep((const struct timespec[]){{0, 5000000}}, NULL);
+                    // nanosleep((const struct timespec[]){{0, 50000}}, NULL);
                     fsm_event_post(&upgrade_fsm, E_UPGRADE_FILE_DOWNLOAD, NULL);
                 }
             } else if (cmd_index == 0xF0008002)
