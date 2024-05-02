@@ -98,8 +98,8 @@ void* Task_Console_Key_Event(void* arg)
 			default :
 				break;
 			}
-			usleep(1000000); //1ms
     	}
+		usleep(1000000); //1ms
 	}
 	printf("[Task_Console_Key_Event] close .... \n"); 
 }
@@ -116,17 +116,17 @@ void* Task_System(void* arg)
     
     while(run) 
     {
-      if(checkcnt++>1)
-      {
-      	checkcnt = 0;
-	    
-	    if(Write_ED_Table_flag == true)
-	    {
-	    	Write_ED_Table_flag = false;
-	    	Write_EndDevice_File(); //save to EndDevice_File	    	
+		if(checkcnt++>1)
+		{
+			checkcnt = 0;
+
+			if(Write_ED_Table_flag == true)
+			{
+				Write_ED_Table_flag = false;
+				Write_EndDevice_File(); //save to EndDevice_File	    	
+			}
 		}
-	}
-	usleep(1000000);
+		usleep(1000000);
     }   
     printf("[Task_System] close .... \n");
 }

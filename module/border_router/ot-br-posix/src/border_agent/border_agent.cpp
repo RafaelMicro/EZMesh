@@ -375,7 +375,7 @@ void BorderAgent::PublishMeshCopService(void)
     {
         otError         error;
         otBorderAgentId id;
-
+        
         error = otBorderAgentGetId(instance, &id);
         if (error == OT_ERROR_NONE)
         {

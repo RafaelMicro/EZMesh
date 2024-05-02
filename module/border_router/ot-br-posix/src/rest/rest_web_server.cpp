@@ -170,6 +170,10 @@ exit:
     {
         otbrLogErr("InitializeListenFd error %s : %s", errorMessage.c_str(), strerror(err));
     }
+    else
+    {
+        otbrLogInfo("Init rest web server success!");
+    }
 
     VerifyOrDie(error == OTBR_ERROR_NONE, "otbr rest server init error");
 }
