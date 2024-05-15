@@ -14,6 +14,8 @@ set(OTBR_INFRA_IF_NAME "eth0" CACHE STRING "The infrastructure interface name")
 set(OTBR_RADIO_URL "spinel+ezmesh://ezmeshd_0?iid=2" CACHE STRING "URL")
 set(OTBR_MDNS "avahi" CACHE STRING "mDNS publisher provider")
 set(OTBR_NAT64_SERVICE "openthread" CACHE STRING "nat64 service name")
+option(OTBR_REST "Enable Rest Server" ON)
+option(OT_BORDER_AGENT_ID "create and save border agent ID" 1)
 
 # Packages installed in bootstrap when above options are enabled
 set(EZMESH_OTBR_RECS "rsyslog, libavahi-client3, avahi-daemon, libjsoncpp-dev")

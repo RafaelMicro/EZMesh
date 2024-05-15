@@ -4,13 +4,7 @@
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME ez-otbr)
 
 # ot-br-posix unfortunately has a variable set but not used, making our compiler fail because of warnings as errors.
-add_compile_options(-Wno-unused-but-set-variable)
-# FetchContent_Declare(ot-br-posix URL "${CMAKE_CURRENT_SOURCE_DIR}/ot-br-posix" SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/ot-br-posix")
-# FetchContent_GetProperties(ot-br-posix)
-# FetchContent_Populate(ot-br-posix)
-
-# FetchContent_Declare(openthread URL "${CMAKE_CURRENT_SOURCE_DIR}/openthread" SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/openthread")
-# FetchContent_Populate(openthread)
+add_compile_options(-Wno-unused-but-set-variable -DOTBR_ENABLE_PUBLISH_MESHCOP_BA_ID=1)
 
 set(ot-br-posix_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ot-br-posix)
 set(openthread_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/openthread)
@@ -44,15 +38,5 @@ endif()
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
 add_subdirectory(${ot-br-posix_SOURCE_DIR})
-
-# add_subdirectory(${ot-br-posix_SOURCE_DIR} ${ot-br-posix_BINARY_DIR})
-# # Remove otbr compilation for target setup
-# # Update otbr-agent config with spinel url
-# execute_process(
-#   COMMAND sed -i "/otbr/d" ${ot-br-posix_SOURCE_DIR}/script/setup
-#   COMMAND sed -i "s/set -euxo pipefail/set -euo pipefail/g" ${ot-br-posix_SOURCE_DIR}/script/_initrc
-#   COMMAND sed -i "s|spinel.* |${OTBR_RADIO_URL} |" ${ot-br-posix_BINARY_DIR}/src/agent/otbr-agent.default
-#   COMMAND_ERROR_IS_FATAL ANY
-# )
 
 ext_install("DIRECTORY" ${ot-br-posix_SOURCE_DIR}/script share/otbr ez-otbr)

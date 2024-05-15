@@ -123,7 +123,7 @@
             "dependsOrder": "sequence",
             "group": "build",
             "dependsOn": [
-                "cmake all",
+                "cmake default",
                 "build"
             ]
         },
@@ -134,7 +134,7 @@
             "dependsOrder": "sequence",
             "group": "build",
             "dependsOn": [
-                "cmake all",
+                "cmake default",
                 "clean build"
             ]
         },
