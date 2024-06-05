@@ -29,6 +29,7 @@ typedef struct
    const char *socket_path;
    unsigned int baudrate;
    uint8_t flowcontrol;
+   uint8_t rf_cert_band;
 }ez_ep_t;
 
 

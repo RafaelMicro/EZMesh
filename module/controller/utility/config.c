@@ -208,6 +208,7 @@ int config_handler(void *user, const char *section, const char *name,
   else if (MATCH("EZMESH_CONF", "baudrate")) pc->ep_hw.baudrate = (unsigned int)atoi(value);
   else if (MATCH("EZMESH_CONF", "flowcontrol")) pc->ep_hw.flowcontrol = (uint8_t)atoi(value);
   else if (MATCH("EZMESH_CONF", "socket_path")) pc->ep_hw.socket_path = strdup(value);
+  else if (MATCH("EZMESH_CONF", "rf_cert_band")) pc->ep_hw.rf_cert_band = (uint8_t)atoi(value);
   else if (MATCH("log", "level")) pc->log_level = atoi(value);
   else if (MATCH("log", "mode")) pc->log_mode = atoi(value);
   else {
