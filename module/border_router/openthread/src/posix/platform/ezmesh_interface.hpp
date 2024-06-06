@@ -209,7 +209,7 @@ private:
     enum
     {
         kMaxFrameSize       = LIB_EZMESH_READ_MINIMUM_SIZE,
-        kMaxWaitTime        = 2000, ///< Maximum wait time in Milliseconds for socket to become writable (see `SendFrame`).
+        kMaxWaitTime        = 5000, ///< Maximum wait time in Milliseconds for socket to become writable (see `SendFrame`).
         kMaxSleepDuration   = 100000,  ///< Sleep duration in micro seconds before restarting ezmesh connection.
         kMaxRestartAttempts = 300,
         kResetCMDSize       = 4,
