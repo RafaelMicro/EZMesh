@@ -1172,7 +1172,7 @@ static void on_reply(uint8_t endpoint_id, void *arg, void *answer, uint32_t answ
         if (p_cmd->property_id != PROP_RX_CAPABILITY && p_cmd->property_id != PROP_CAPABILITIES
             && p_cmd->property_id != PROP_BUS_SPEED_VALUE && p_cmd->property_id != PROP_PROTOCOL_VERSION
             && p_cmd->property_id != PROP_SECONDARY_EZMESH_VERSION && p_cmd->property_id != PROP_SECONDARY_APP_VERSION
-            && p_cmd->property_id != PROP_BOOTLOADER_REBOOT_MODE)
+            && p_cmd->property_id != PROP_BOOTLOADER_REBOOT_MODE && p_cmd->property_id != PROP_RF_CERT_BAND)
         {
           log_error("Received on_final property_is %x as a u-frame", p_cmd->property_id);
         }

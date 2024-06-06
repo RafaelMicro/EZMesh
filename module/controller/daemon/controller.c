@@ -67,6 +67,7 @@ static bool reset_reason_received = false;
 static bool capabilities_received = false;
 static bool rx_capability_received = false;
 static bool protocol_version_received = false;
+static bool set_rf_cert_band_ack = false;
 static reboot_mode_t pending_mode;
 static int kill_eventfd = -1;
 static enum
@@ -82,6 +83,7 @@ static enum
     E_WAIT_SECONDARY_APP_VERSION,
     E_WAIT_PROTOCOL_VERSION,
     E_WAIT_SECONDARY_BUS_SPEED,
+    E_WAIT_RF_CERT_BAND,
     E_RESET_SEQUENCE_DONE
 } reset_sequence_state = E_SET_REBOOT_MODE;
 
@@ -377,6 +379,35 @@ static void __controller_get_protocol_version_callback(sys_cmd_handle_t *handle,
     protocol_version_received = true;
 }
 
+static void __controller_set_rf_cert_band_callback(sys_cmd_handle_t *handle,
+                                              property_id_t property_id,
+                                              void *property_value,
+                                              size_t property_length,
+                                              status_t status)
+{
+    (void)handle;
+    (void)property_id;
+    (void)property_value;
+
+    switch (status)
+    {
+    case STATUS_IN_PROGRESS:
+    case STATUS_OK:{
+        set_rf_cert_band_ack = true;
+        break;}
+
+    case STATUS_TIMEOUT:
+    case STATUS_ABORT:{
+        log_info("Failed to connect, agent seems unresponsive");
+        ignore_reset_reason = false;
+        reset_sequence_state = E_SET_REBOOT_MODE;
+        break;}
+    default:{
+        FATAL("Unhandled __controller_set_rf_cert_band_callback status");
+        break;}
+    }
+}
+
 static void __controller_capabilities_check(void)
 {
     if ((config.ep_hw.type == EP_TYPE_UART) && (config.ep_hw.flowcontrol != (bool)(capabilities & CAPABILITIES_UART_FLOW_CONTROL_MASK)))
@@ -478,12 +509,29 @@ static void __controller_reset_proc(void)
         break;}
 
     case E_WAIT_SECONDARY_EZMESH_VERSION:{
+        uint32_t rf_cert_band = config.ep_hw.rf_cert_band;
         if (agent_ezmesh_version_received)
+        {
+            // log_info("[Reset Seq] Get Agent EZMESH version");
+            // reset_sequence_state = E_WAIT_SECONDARY_APP_VERSION;
+            // sys_param_get(__controller_get_agent_app_version_callback,
+            //               PROP_SECONDARY_APP_VERSION, 5, 100000, true);
+
+            log_info("[Reset Seq] Set RF certificate band setting");
+            reset_sequence_state = E_WAIT_RF_CERT_BAND;
+            sys_param_set(__controller_set_rf_cert_band_callback,
+                        1, 2000000, PROP_RF_CERT_BAND,
+                        &rf_cert_band, sizeof(rf_cert_band), true);            
+        }
+        break;}
+
+    case E_WAIT_RF_CERT_BAND:{
+        if(set_rf_cert_band_ack)
         {
             log_info("[Reset Seq] Get Agent EZMESH version");
             reset_sequence_state = E_WAIT_SECONDARY_APP_VERSION;
             sys_param_get(__controller_get_agent_app_version_callback,
-                          PROP_SECONDARY_APP_VERSION, 5, 100000, true);
+                          PROP_SECONDARY_APP_VERSION, 5, 100000, true);            
         }
         break;}
 
