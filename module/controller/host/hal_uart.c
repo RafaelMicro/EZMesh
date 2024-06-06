@@ -102,26 +102,56 @@ static bool __hdlc_header_validate(uint8_t *hdr)
 
 static bool __sync_header(uint8_t *buffer, size_t *pos)
 {
-    size_t num_header_combination;
 
-    if (*pos < HDLC_HEADER_RAW_SIZE) return false;
+  if (*pos < HDLC_HEADER_RAW_SIZE) {
+    // There's not enough data for a header, nothing to synch
+    return false;
+  }
 
-    num_header_combination = *pos - HDLC_HEADER_RAW_SIZE + 1;
+  /* If we think of a header like a sliding window of width SLI_CPC_HDLC_HEADER_RAW_SIZE,
+   * then we can slide it 'num_header_combination' times over the data. */
+  const size_t num_header_combination = *pos - HDLC_HEADER_RAW_SIZE + 1;
 
-    for (size_t i = 0; i < num_header_combination; i++)
-    {
-        if (__hdlc_header_validate(&buffer[i]))
-        {
-            if (i != 0)
-            {
-                memmove(&buffer[0], &buffer[i], *pos - i);
-                *pos -= i;
-            }
-            return true;
-        }
+  size_t i;
+
+  for (i = 0; i != num_header_combination; i++) {
+    if (__hdlc_header_validate(&buffer[i])) {
+      if (i == 0) {
+        // The start of the buffer is aligned with a good header, don't do anything
+      } else {
+        /* We had 'i' number of bad bytes until we struck a good header, move back the data
+         * to the beginning of the buffer */
+        memmove(&buffer[0], &buffer[i], *pos - i);
+
+        /* We crushed 'i' bytes at the start of the buffer */
+        *pos -= i;
+      }
+      return true;
+    } else {
+      /* The header is not valid, continue until it is */
     }
-    memmove(&buffer[0], &buffer[num_header_combination], HDLC_HEADER_RAW_SIZE - 1);
-    *pos = HDLC_HEADER_RAW_SIZE - 1;
+  }
+    
+    // size_t num_header_combination;
+
+    // if (*pos < HDLC_HEADER_RAW_SIZE) return false;
+
+    // num_header_combination = *pos - HDLC_HEADER_RAW_SIZE + 1;
+
+    // for (size_t i = 0; i < num_header_combination; i++)
+    // {
+    //     if (__hdlc_header_validate(&buffer[i]))
+    //     {
+    //         if (i != 0)
+    //         {
+    //             memmove(&buffer[0], &buffer[i], *pos - i);
+    //             *pos -= i;
+    //         }
+    //         return true;
+    //     }
+    // }
+    // memmove(&buffer[0], &buffer[num_header_combination], HDLC_HEADER_RAW_SIZE - 1);
+    // *pos = HDLC_HEADER_RAW_SIZE - 1;
 
     return false;
 }
@@ -140,7 +170,7 @@ static bool __push_valid_hdlc_frame(uint8_t *buffer, size_t *pos)
     frame_size = payload_len + HDLC_HEADER_RAW_SIZE;
 
     if (frame_size > *pos) return false;
-    // log_info_hexdump("[uart rx]", buffer, frame_size);
+    log_info_hexdump("[uart rx]", buffer, frame_size);
     write(fd_cpcd, buffer, frame_size);
 
     remaining = *pos - frame_size;
@@ -169,7 +199,8 @@ static size_t __hal_uart_get_fd_data(uint8_t *buffer, size_t pos, size_t size)
 
 static long __drain_ns(uint32_t bytes_left)
 {
-    uint64_t bytes_per_sec = drv_baudrate / 8;
+    // uint64_t bytes_per_sec = drv_baudrate / 8;
+    uint64_t bytes_per_sec = 115200 / 8;
     return (long)(bytes_left * (uint64_t)UNIT_1G / bytes_per_sec);
 }
 
@@ -182,17 +213,18 @@ static void __hal_uart_proc(void)
     struct timespec t = {0};
     struct timeval now;
     static struct timeval last ={0}; 
-    uint32_t wait = 2000;
+    uint32_t wait = 4000;
 
     rval = read(fd_cpcd, uart_buffer, sizeof(uart_buffer));
     CHECK_ERROR(rval < 0);
 
     gettimeofday(&now, NULL);
-    log_info("%ld", (uint64_t)now.tv_sec * 1000*1000 + (uint64_t)now.tv_usec);
+    // log_info("%ld", (uint64_t)now.tv_sec * 1000*1000 + (uint64_t)now.tv_usec);
 
     // log_info_hexdump("[uart tx]", uart_buffer, rval);
     if(drv_baudrate == 115200)
         wait = 4000;
+    
     if(((uint64_t)now.tv_sec * 1000*1000 + (uint64_t)now.tv_usec) - ((uint64_t)last.tv_sec * 1000*1000 + (uint64_t)last.tv_usec) < wait)
         nanosleep((const struct timespec[]){{0, 1000000}}, NULL);
     wval = write(fd_uart, uart_buffer, (size_t)rval);
