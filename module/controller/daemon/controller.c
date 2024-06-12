@@ -512,16 +512,21 @@ static void __controller_reset_proc(void)
         uint32_t rf_cert_band = config.ep_hw.rf_cert_band;
         if (agent_ezmesh_version_received)
         {
-            // log_info("[Reset Seq] Get Agent EZMESH version");
-            // reset_sequence_state = E_WAIT_SECONDARY_APP_VERSION;
-            // sys_param_get(__controller_get_agent_app_version_callback,
-            //               PROP_SECONDARY_APP_VERSION, 5, 100000, true);
-
-            log_info("[Reset Seq] Set RF certificate band setting");
-            reset_sequence_state = E_WAIT_RF_CERT_BAND;
-            sys_param_set(__controller_set_rf_cert_band_callback,
-                        1, 2000000, PROP_RF_CERT_BAND,
-                        &rf_cert_band, sizeof(rf_cert_band), true);            
+            if(rf_cert_band != 0)
+            {
+                log_info("[Reset Seq] Set RF certificate band setting");
+                reset_sequence_state = E_WAIT_RF_CERT_BAND;
+                sys_param_set(__controller_set_rf_cert_band_callback,
+                            1, 2000000, PROP_RF_CERT_BAND,
+                            &rf_cert_band, sizeof(rf_cert_band), true);
+            }
+            else
+            {
+                log_info("[Reset Seq] Get Agent EZMESH version");
+                reset_sequence_state = E_WAIT_SECONDARY_APP_VERSION;
+                sys_param_get(__controller_get_agent_app_version_callback,
+                              PROP_SECONDARY_APP_VERSION, 5, 100000, true);                
+            }
         }
         break;}
 
