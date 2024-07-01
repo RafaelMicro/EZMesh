@@ -15,7 +15,7 @@
 #define TO_EZMESH_BUF_SIZE     400
 #define FROM_EZMESH_BUF_SIZE   LIB_EZMESH_READ_MINIMUM_SIZE
 #define INST_NAME_LEN       100
-#define RETRY_COUNT         1
+#define RETRY_COUNT         300
 #define EZMESH_RETRY_SLEEP_NS  100000000L
 #define EZMESH_RESET_SLEEP_NS  10000L
 #define THREAD_SLEEP_NS     1000000L
@@ -150,7 +150,8 @@ int reset_ezmesh(void)
             // speed up boot process if everything seems ok
             break;
         }
-        nanosleep((const struct timespec[]){{ 0, EZMESH_RETRY_SLEEP_NS } }, NULL);
+        //nanosleep((const struct timespec[]){{ 0, EZMESH_RETRY_SLEEP_NS } }, NULL);
+	usleep(100000);
         retry++;
     } while ((ret != 0) && (retry < RETRY_COUNT));
     has_reset = false;

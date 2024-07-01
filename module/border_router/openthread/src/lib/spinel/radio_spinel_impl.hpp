@@ -470,6 +470,7 @@ template <typename InterfaceType> void RadioSpinel<InterfaceType>::HandleReceive
 exit:
     if (error != OT_ERROR_NONE)
     {
+	otLogWarnPlat("unpacked %d, header %d, tid %d", unpacked, header, SPINEL_HEADER_GET_IID(header));
         mRxFrameBuffer.DiscardFrame();
         otLogWarnPlat("Error handling hdlc frame: %s", otThreadErrorToString(error));
     }

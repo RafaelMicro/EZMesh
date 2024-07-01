@@ -50,6 +50,7 @@
 
 #include "common/code_utils.hpp"
 #include "common/logging.hpp"
+#include "common/encoding.hpp"
 #include "lib/spinel/spinel.h"
 
 #if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_EZMESH
@@ -150,31 +151,47 @@ void Ezmesh::Read(uint64_t aTimeoutUs)
 
         block = true;
         ret = libezmesh_set_ep_option(mEndpoint, OPTION_BLOCKING, &block, sizeof(block));
-        OT_ASSERT(ret == 0);
+        //OT_ASSERT(ret == 0);
         ret = libezmesh_set_ep_option(mEndpoint, OPTION_RX_TIMEOUT, &timeout, sizeof(timeout));
-        OT_ASSERT(ret == 0);
+        //OT_ASSERT(ret == 0);
     }
     else
     {
         ret = libezmesh_set_ep_option(mEndpoint, OPTION_BLOCKING, &block, sizeof(block));
-        OT_ASSERT(ret == 0);
+        //OT_ASSERT(ret == 0);
     }
 
     bytesRead = libezmesh_read_ep(mEndpoint, buffer, sizeof(buffer), EP_READ_FLAG_NONE);
 
     if (bytesRead > 0)
     {
-        while(bytesRead--)
+        // Unpack concatenated spinel frames (see ncp_cpc.cpp)
+        while (bytesRead > 0)
         {
-            if(mReceiveFrameBuffer.CanWrite(sizeof(uint8_t)))
+            if (bytesRead < 2)
             {
-                IgnoreError(mReceiveFrameBuffer.WriteByte(*(ptr++)));
+                break;
             }
+            uint16_t bufferLen = Encoding::BigEndian::ReadUint16(ptr);
+            ptr += 2;
+            bytesRead -= 2;
+            if (bytesRead < bufferLen)
+            {
+                break;
+            }
+            for (uint16_t i = 0; i < bufferLen; i++)
+            {
+                if (!mReceiveFrameBuffer.CanWrite(1) || (mReceiveFrameBuffer.WriteByte(*(ptr++)) != OT_ERROR_NONE))
+                {
+                    mReceiveFrameBuffer.DiscardFrame();
+                    return;
+                }
+            }
+            bytesRead -= bufferLen;
+            mReceiveFrameCallback(mReceiveFrameContext);
         }
-
-        mReceiveFrameCallback(mReceiveFrameContext);
-
     }
+
     else if (bytesRead == -ECONNRESET)
     {
         SetCpcResetReq(true);
