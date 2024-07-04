@@ -1,5 +1,6 @@
 ext_add_subdirectory_ifdef(CONFIG_CONTROLLER controller)
 ext_add_subdirectory_ifdef(CONFIG_UPGRADE upgrade)
+ext_add_subdirectory_ifdef(CONFIG_CHECK check)
 ext_add_subdirectory_ifdef(CONFIG_BLUETOOTH bluetooth)
 ext_add_subdirectory_ifdef(CONFIG_BORDER_ROUTER border_router)
 ext_add_subdirectory_ifdef(CONFIG_ZIGBEE_GW_SERVICE zigbee)

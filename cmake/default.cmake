@@ -1,6 +1,6 @@
-
 ext_config_ifndef(CONFIG_CONTROLLER true)
 ext_config_ifndef(CONFIG_UPGRADE true)
+ext_config_ifndef(CONFIG_CHECK true)
 ext_config_ifndef(CONFIG_BLUETOOTH false)
 ext_config_ifndef(CONFIG_BORDER_ROUTER false)
 ext_config_ifndef(CONFIG_ZIGBEE_GW_SERVICE false)

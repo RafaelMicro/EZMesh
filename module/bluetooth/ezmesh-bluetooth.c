@@ -65,20 +65,13 @@ uint32_t startup(void)
 {
     int ret;
     uint8_t retry = 0;
-    ezmesh_handle_inst_t *p_ezmesh_inst;
 
     // Initialize EZMESH communication
     do
     {
         printf("Try open socket, retry_count %d\n", retry);
         ret = libezmesh_init(&lib_handle, ezmesh_instance, reset_cb);
-        if (ret == 0)
-        {
-            p_ezmesh_inst = lib_handle.ptr;
-            printf("Agent app v%s\r\n", p_ezmesh_inst->agent_app_version);            
-            // speed up boot process if everything seems ok
-            break;
-        }
+        if (ret == 0) break;
         nanosleep((const struct timespec[]){{ 0, EZMESH_RETRY_SLEEP_NS } }, NULL);
         retry++;
     } while ((ret != 0) && (retry < RETRY_COUNT));
