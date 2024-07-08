@@ -13,6 +13,11 @@ if (DEFINED EZMESH_CRC_0)
   add_definitions(-DEZMESH_CRC_0=${EZMESH_CRC_0})
 endif()
 
+if (DEFINED EZMESH_HDLC_SEQ_8)
+  message(STATUS "Using EZMESH_HDLC_SEQ_8")
+  add_definitions(-DEZMESH_HDLC_SEQ_8=${EZMESH_HDLC_SEQ_8})
+endif()
+
 # Includes
 include(cmake/GetGitRevisionDescription.cmake)
 include(cmake/TargetStds.cmake)

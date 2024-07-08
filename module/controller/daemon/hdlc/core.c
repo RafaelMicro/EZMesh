@@ -90,7 +90,11 @@ static inline bool __hdlc_is_poll_final(uint8_t control) { return (control & (1 
 static inline void __hdlc_set_ctrl_ack(uint8_t *control,
                                      uint8_t ack)
 {
+#if (EZMESH_HDLC_SEQ_8==1)
     *control = (uint8_t)(*control & ~0x07);
+#else
+    *control = (uint8_t)(*control & ~0x03);
+#endif
     *control |= ack;
 }
 
@@ -457,8 +461,11 @@ static void core_proc_rx_hal(hal_epoll_event_data_t *event_data)
     { 
         type = HDLC_FRAME_TYPE_IFRAME; 
     }
+#if (EZMESH_HDLC_SEQ_8==1)    
     ack = control & 0x07;
-
+#else
+    ack = control & 0x03;
+#endif
     CHECK_ERROR(data_length != frame_size - HDLC_HEADER_RAW_SIZE);
 
     endpoint = find_endpoint(address);
@@ -540,8 +547,12 @@ static void core_proc_rx_iframe(frame_t *rx_frame)
         return;
     }
 
-    control = rx_frame->header[HDLC_CONTROL_POS]; 
+    control = rx_frame->header[HDLC_CONTROL_POS];
+#if (EZMESH_HDLC_SEQ_8==1) 
     seq = (control >> HDLC_CONTROL_SEQ_POS) & 0x07;
+#else
+    seq = (control >> HDLC_CONTROL_SEQ_POS) & 0x03;
+#endif
 
     log_info("seq %d, ack %d", seq, endpoint->ack);
 
@@ -577,7 +588,11 @@ static void core_proc_rx_iframe(frame_t *rx_frame)
 
         log_info("[Core] EP #%u: rxd I-frame queued", endpoint->id);
         endpoint->ack++;
+#if (EZMESH_HDLC_SEQ_8==1) 	
         endpoint->ack %= 8;
+#else
+	endpoint->ack %= 4;
+#endif
         send_ack(endpoint);
     } 
     else if (is_seq_valid(seq, endpoint->ack))
@@ -795,7 +810,11 @@ void core_write(uint8_t endpoint_number, const void *message, size_t message_len
             control |= (uint8_t)((uint8_t)poll << HDLC_CONTROL_P_F_POS);
             buffer_handle->control = control;
             endpoint->seq++;
+#if (EZMESH_HDLC_SEQ_8==1) 
             endpoint->seq %= 8;
+#else 
+	    endpoint->seq %= 4;
+#endif
             log_info("Sequence # is now %d on ep %d", endpoint->seq, endpoint->id);
         } 
         else
@@ -1039,13 +1058,24 @@ static void proc_ack(endpoint_t *endpoint, uint8_t ack)
     frame = item->handle;
 
     control = ((uint8_t *)frame->hdlc_header)[HDLC_CONTROL_POS];
+#if (EZMESH_HDLC_SEQ_8==1) 
     seq_number = (control >> HDLC_CONTROL_SEQ_POS) & 0x07;
+#else
+    seq_number = (control >> HDLC_CONTROL_SEQ_POS) & 0x03;
+#endif
 
     ack_range_min = (uint8_t)(seq_number + 1);
+#if (EZMESH_HDLC_SEQ_8==1)    
     ack_range_min %= 8;
+#else
+    ack_range_min %= 4;
+#endif
     ack_range_max = (uint8_t)(seq_number + endpoint->frames_count_retry_queue);
+#if (EZMESH_HDLC_SEQ_8==1)
     ack_range_max %= 8;
-
+#else
+    ack_range_max %= 4;
+#endif
     if (ack_range_max >= ack_range_min)
     {
         if (ack < ack_range_min || ack > ack_range_max) return;
@@ -1055,7 +1085,11 @@ static void proc_ack(endpoint_t *endpoint, uint8_t ack)
     if (ack > seq_number) frames_count_ack = (uint8_t)(ack - seq_number);
     else
     {
+#if (EZMESH_HDLC_SEQ_8==1)	    
         frames_count_ack = (uint8_t)(8 - seq_number);
+#else
+	frames_count_ack = (uint8_t)(4 - seq_number);
+#endif
         frames_count_ack = (uint8_t)(frames_count_ack + ack);
     }
     stop_retry_timer(endpoint);
@@ -1359,9 +1393,11 @@ static void retry_timeout(endpoint_t *endpoint)
         retry_frame(endpoint);
     }
 }
-
+#if (EZMESH_HDLC_SEQ_8==1)
 static bool is_seq_valid(uint8_t seq, uint8_t ack) { return ((seq == (ack - 1u)) || (ack == 0u && seq == 7u)); }
-
+#else
+static bool is_seq_valid(uint8_t seq, uint8_t ack) { return ((seq == (ack - 1u)) || (ack == 0u && seq == 3u)); }
+#endif
 static endpoint_t *find_endpoint(uint8_t endpoint_number) { return &core_endpoints[endpoint_number]; }
 
 static void stop_retry_timer(endpoint_t *endpoint)

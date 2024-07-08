@@ -155,8 +155,13 @@ typedef enum hdlc_frame_pos
 typedef enum hdlc_frame_shift
 {
     HDLC_CONTROL_UFRAME_TYPE_POS = 0,
+#if (EZMESH_HDLC_SEQ_8==1)
     HDLC_CONTROL_P_F_POS = 3,
     HDLC_CONTROL_SEQ_POS = 4,
+#else
+    HDLC_CONTROL_P_F_POS = 2,
+    HDLC_CONTROL_SEQ_POS = 3,    
+#endif
     HDLC_CONTROL_SFRAME_FUNCTION_ID_POS = 4,
     HDLC_CONTROL_FRAME_TYPE_POS = 6
 } hdlc_frame_shift_t;
