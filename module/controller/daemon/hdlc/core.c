@@ -90,7 +90,7 @@ static inline bool __hdlc_is_poll_final(uint8_t control) { return (control & (1 
 static inline void __hdlc_set_ctrl_ack(uint8_t *control,
                                      uint8_t ack)
 {
-    *control = (uint8_t)(*control & ~0x03);
+    *control = (uint8_t)(*control & ~0x07);
     *control |= ack;
 }
 
@@ -457,7 +457,7 @@ static void core_proc_rx_hal(hal_epoll_event_data_t *event_data)
     { 
         type = HDLC_FRAME_TYPE_IFRAME; 
     }
-    ack = control & 0x03;
+    ack = control & 0x07;
 
     CHECK_ERROR(data_length != frame_size - HDLC_HEADER_RAW_SIZE);
 
@@ -541,7 +541,9 @@ static void core_proc_rx_iframe(frame_t *rx_frame)
     }
 
     control = rx_frame->header[HDLC_CONTROL_POS]; 
-    seq = (control >> HDLC_CONTROL_SEQ_POS) & 0x03;
+    seq = (control >> HDLC_CONTROL_SEQ_POS) & 0x07;
+
+    log_info("seq %d, ack %d", seq, endpoint->ack);
 
     if (seq == endpoint->ack)
     {
@@ -575,7 +577,7 @@ static void core_proc_rx_iframe(frame_t *rx_frame)
 
         log_info("[Core] EP #%u: rxd I-frame queued", endpoint->id);
         endpoint->ack++;
-        endpoint->ack %= 4;
+        endpoint->ack %= 8;
         send_ack(endpoint);
     } 
     else if (is_seq_valid(seq, endpoint->ack))
@@ -793,7 +795,7 @@ void core_write(uint8_t endpoint_number, const void *message, size_t message_len
             control |= (uint8_t)((uint8_t)poll << HDLC_CONTROL_P_F_POS);
             buffer_handle->control = control;
             endpoint->seq++;
-            endpoint->seq %= 4;
+            endpoint->seq %= 8;
             log_info("Sequence # is now %d on ep %d", endpoint->seq, endpoint->id);
         } 
         else
@@ -1037,12 +1039,12 @@ static void proc_ack(endpoint_t *endpoint, uint8_t ack)
     frame = item->handle;
 
     control = ((uint8_t *)frame->hdlc_header)[HDLC_CONTROL_POS];
-    seq_number = (control >> HDLC_CONTROL_SEQ_POS) & 0x03;
+    seq_number = (control >> HDLC_CONTROL_SEQ_POS) & 0x07;
 
     ack_range_min = (uint8_t)(seq_number + 1);
-    ack_range_min %= 4;
+    ack_range_min %= 8;
     ack_range_max = (uint8_t)(seq_number + endpoint->frames_count_retry_queue);
-    ack_range_max %= 4;
+    ack_range_max %= 8;
 
     if (ack_range_max >= ack_range_min)
     {
@@ -1053,7 +1055,7 @@ static void proc_ack(endpoint_t *endpoint, uint8_t ack)
     if (ack > seq_number) frames_count_ack = (uint8_t)(ack - seq_number);
     else
     {
-        frames_count_ack = (uint8_t)(4 - seq_number);
+        frames_count_ack = (uint8_t)(8 - seq_number);
         frames_count_ack = (uint8_t)(frames_count_ack + ack);
     }
     stop_retry_timer(endpoint);
@@ -1358,7 +1360,7 @@ static void retry_timeout(endpoint_t *endpoint)
     }
 }
 
-static bool is_seq_valid(uint8_t seq, uint8_t ack) { return ((seq == (ack - 1u)) || (ack == 0u && seq == 3u)); }
+static bool is_seq_valid(uint8_t seq, uint8_t ack) { return ((seq == (ack - 1u)) || (ack == 0u && seq == 7u)); }
 
 static endpoint_t *find_endpoint(uint8_t endpoint_number) { return &core_endpoints[endpoint_number]; }
 

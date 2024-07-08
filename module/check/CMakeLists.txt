@@ -1,0 +1,5 @@
+add_executable(ez-check mian.c)
+target_link_libraries(ez-check ezmesh util)
+get_target_property(EZMESH_SOURCE_DIR ezmesh SOURCE_DIR)
+target_include_directories(ez-check PRIVATE ${EZMESH_SOURCE_DIR}/library)
+ext_install( "TARGET_RUNTIME" ez-check "bin" ez-check)
