@@ -204,6 +204,7 @@ static void __hal_uart_proc(void) {
   struct timespec t = {0};
   struct timeval now;
   static struct timeval last = {0};
+  uint32_t wait = 4000;
 
   rval = read(fd_cpcd, uart_buffer, sizeof(uart_buffer));
   CHECK_ERROR(rval < 0);
@@ -212,7 +213,13 @@ static void __hal_uart_proc(void) {
   // log_info("%ld", (uint64_t)now.tv_sec * 1000*1000 + (uint64_t)now.tv_usec);
 
   // log_info_hexdump("[uart tx]", uart_buffer, rval);
+  if (drv_baudrate == 115200)
+    wait = 4000;
 
+  if (((uint64_t)now.tv_sec * 1000 * 1000 + (uint64_t)now.tv_usec) -
+          ((uint64_t)last.tv_sec * 1000 * 1000 + (uint64_t)last.tv_usec) <
+      wait)
+    nanosleep((const struct timespec[]){{0, 1000000}}, NULL);
   wval = write(fd_uart, uart_buffer, (size_t)rval);
   last = now;
   CHECK_ERROR(wval < 0);
