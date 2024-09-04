@@ -213,7 +213,7 @@ private:
         kMaxSleepDuration   = 100000,  ///< Sleep duration in micro seconds before restarting ezmesh connection.
         kMaxRestartAttempts = 300,
         kResetCMDSize       = 4,
-        kCpcBusSpeed        = 115200,
+        kCpcBusSpeed        = 500000,
     };
 
     Spinel::SpinelInterface::ReceiveFrameCallback mReceiveFrameCallback;

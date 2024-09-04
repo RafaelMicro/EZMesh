@@ -299,7 +299,7 @@ static void close_main_node_connection(int fd_data_socket)
       CHECK_ERROR(shutdown(fd_data_socket, SHUT_RDWR) < 0);
       CHECK_ERROR(close(fd_data_socket) < 0);
       log_info("Client disconnected");
-      free(item);
+      //free(item);
     }
     item = next_item;
   } while (item != NULL);

@@ -46,11 +46,10 @@ namespace ot {
 namespace Posix {
 
 #if defined(__linux__) && OPENTHREAD_POSIX_CONFIG_FIREWALL_ENABLE
-
+ss
 #if !OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE || !OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
 #error Configurations 'OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE' and 'OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE' are required.
 #endif
-
 static const char kIpsetCommand[]             = OPENTHREAD_POSIX_CONFIG_IPSET_BINARY;
 static const char kIngressDenySrcIpSet[]      = "otbr-ingress-deny-src";
 static const char kIngressDenySrcSwapIpSet[]  = "otbr-ingress-deny-src-swap";

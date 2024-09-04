@@ -128,7 +128,7 @@ void Ezmesh::Deinit(void)
 {
     VerifyOrExit(mEndpoint.ptr != nullptr);
 
-    VerifyOrExit(0 == libezmesh_close_ep(&mEndpoint), perror("close ezmesh endpoint"));
+    //VerifyOrExit(0 == libezmesh_close_ep(&mEndpoint), perror("close ezmesh endpoint"));
 
 exit:
     return;

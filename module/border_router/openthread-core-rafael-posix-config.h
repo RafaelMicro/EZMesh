@@ -223,7 +223,7 @@
  *
  */
 #undef OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT
-#define OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT 100
+#define OPENTHREAD_SPINEL_CONFIG_RCP_RESTORATION_MAX_COUNT 5
 
 /**
  * Define to enable CLI logging and `otLogCli()` OT function.
@@ -258,6 +258,8 @@
 
 #undef OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS
 #define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS 256
+
+#define OPENTHREAD_CONFIG_MAC_CSL_REQUEST_AHEAD_US 5400
 
 /******************************************************************************
  * Include OpenThread project's POSIX defaults

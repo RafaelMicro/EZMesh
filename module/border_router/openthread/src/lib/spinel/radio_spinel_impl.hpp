@@ -687,13 +687,13 @@ void RadioSpinel<InterfaceType>::HandleValueIs(spinel_prop_key_t aKey, const uin
 
         if (status >= SPINEL_STATUS_RESET__BEGIN && status <= SPINEL_STATUS_RESET__END)
         {
-            /*if (IsEnabled())
+            if (IsEnabled())
             {
                 HandleRcpUnexpectedReset(status);
                 ExitNow();
             }
 
-            otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));*/
+            otLogInfoPlat("RCP reset: %s", spinel_status_to_cstr(status));
             mIsReady = true;
         }
         else
