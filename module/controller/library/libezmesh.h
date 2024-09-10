@@ -100,7 +100,7 @@ typedef struct
     int ctrl_sock_fd;
     pthread_mutex_t ctrl_sock_fd_lock;
     size_t max_write_size;
-    char agent_app_version[16];
+    char agent_app_version[512];
     char *instance_name;
     bool initialized;
 } ezmesh_handle_inst_t;

@@ -188,7 +188,7 @@ static int get_agent_app_version(ezmesh_handle_inst_t *lib_handle)
     INIT_EZMESH_RET(int);
     int tmp_ret = 0;
 
-    char version[PROJECT_MAX_VERSION_SIZE];
+    char version[PROJECT_MAX_VERSION_SIZE]={0};
 
 
     tmp_ret = ezmesh_query_exchange(lib_handle, lib_handle->ctrl_sock_fd,
@@ -201,7 +201,7 @@ static int get_agent_app_version(ezmesh_handle_inst_t *lib_handle)
     }
 
     strncpy(lib_handle->agent_app_version, version, PROJECT_MAX_VERSION_SIZE);
-
+    printf("RCP version: %s\n", lib_handle->agent_app_version);
     RETURN_EZMESH_RET;
 
 }
@@ -348,20 +348,19 @@ int libezmesh_init(ezmesh_handle_t *handle, const char *instance_name, ezmesh_re
         SET_EZMESH_RET(-errno);
         goto close_ctrl_sock_fd;
     }
-    // tmp_ret = check_version(lib_handle);
-    // if (tmp_ret < 0)
-    // {
-    //     SET_EZMESH_RET(tmp_ret);
-    //     goto close_ctrl_sock_fd;
-    // }
+    tmp_ret = check_version(lib_handle);
+    if (tmp_ret < 0)
+    {
+        SET_EZMESH_RET(tmp_ret);
+        goto close_ctrl_sock_fd;
+    }
 
-    // tmp_ret = get_agent_app_version(lib_handle);
-
-    // if (tmp_ret < 0)
-    // {
-    //     SET_EZMESH_RET(tmp_ret);
-    //     goto close_ctrl_sock_fd;
-    // }
+    tmp_ret = get_agent_app_version(lib_handle);
+    if (tmp_ret < 0)
+    {
+        SET_EZMESH_RET(tmp_ret);
+        goto close_ctrl_sock_fd;
+    }
 
     tmp_ret = set_pid(lib_handle);
     if (tmp_ret < 0)
