@@ -40,6 +40,8 @@ static int pty_s;
 static volatile bool run = true;
 // signal if the controller was reset
 static volatile bool has_reset = false;
+// signal if the controller was reset
+static volatile bool trigger_scan_disable = false;
 
 static void reset_cb(void);
 
@@ -138,13 +140,9 @@ int reset_ezmesh(void)
     do
     {
         ret = libezmesh_reset(&lib_handle);
-        if (ret == 0)
-        {
-            // speed up boot process if everything seems ok
-            break;
-        }
+        if (ret == 0) break; // speed up boot process if everything seems ok
         //nanosleep((const struct timespec[]){{ 0, EZMESH_RETRY_SLEEP_NS } }, NULL);
-	usleep(100000);
+	    usleep(100000);
         retry++;
     } while ((ret != 0) && (retry < RETRY_COUNT));
     has_reset = false;
@@ -160,10 +158,7 @@ int reset_ezmesh(void)
                          &endpoint,
                          EP_BT_RCP,
                          EZMESH_TRANSMIT_WINDOW);
-    if (ret < 0)
-    {
-        perror(" open endpoint ");
-    }
+    if (ret < 0) perror(" open endpoint ");
 
     return ret;
 }
@@ -223,6 +218,22 @@ int main(int argc, char *argv[])
     }
 }
 
+
+const uint8_t cmd_complete[] = {0x01, 0x0C, 0x20, 0x00};
+uint8_t* find_and_trim_pkt_payload(uint8_t *data, size_t data_len, size_t *new_data_len) {
+    size_t i = 0;
+    while (i < data_len) {
+        uint8_t pkt_length = data[i + 2];
+        if (pkt_length == sizeof(cmd_complete) && memcmp(&data[i + 3], cmd_complete, sizeof(cmd_complete)) == 0) {
+            *new_data_len = data_len - i;
+            return &data[i];
+        }
+        i += 3 + pkt_length;
+    }
+    *new_data_len = 0;
+    return NULL;
+}
+
 /**************************************************************************//**
  * Working thread from EZMESHd
  *****************************************************************************/
@@ -243,13 +254,32 @@ void *ezmesh_to_pty_func(void *ptr)
                               EP_READ_FLAG_NON_BLOCKING);
         if (size > 0)
         {
-            if (write(pty_m, &data_from_ezmesh[0], size) == -1)
-            {
-                perror("write error ");
+            if(trigger_scan_disable){
+                size_t new_data_len = 0;
+                uint8_t *new_data = find_and_trim_pkt_payload(&data_from_ezmesh[0], size, &new_data_len);
+
+                if (new_data) {
+                    trigger_scan_disable = false;
+                    memcpy(&data_from_ezmesh[0], new_data, new_data_len);
+                    size = new_data_len;
+                } else {
+                    printf("pass r %d-> %ld\n", trigger_scan_disable, size);
+                    for (i = 0; i < size; i++)
+                    {
+                        if ((i & 0xF) == 8) printf(" -");
+                        else if (!(i & 0xF)) printf("\n");
+                        printf(" %02X", data_from_ezmesh[i]);
+                    }
+                    printf("\n\n");
+                    nanosleep((const struct timespec[]){{ 0, THREAD_SLEEP_NS } }, NULL);
+                    continue;
+                }
+
             }
 
+            if (write(pty_m, &data_from_ezmesh[0], size) == -1) perror("write error "); 
 
-            printf("r-> %ld\n", size);
+            printf("r %d-> %ld\n", trigger_scan_disable, size);
             for (i = 0; i < size; i++)
             {
                 if ((i & 0xF) == 8)
@@ -303,7 +333,11 @@ void *pty_to_ezmesh_func(void *ptr)
             {
                 d_len = data_to_ezmesh[3] + 4;
             }
-            printf("w-> %d\n", d_len);
+
+            trigger_scan_disable = (data_to_ezmesh[0] == 0x01 && data_to_ezmesh[1] == 0x0C && 
+               data_to_ezmesh[2] == 0x20 && data_to_ezmesh[3] == 0x02 && 
+               data_to_ezmesh[4] == 0x00 && data_to_ezmesh[5] == 0x00 );
+            printf("w %d-> %d\n", trigger_scan_disable, d_len);
             for (i = 0; i < d_len; i++)
             {
                 if ((i & 0xF) == 8)
