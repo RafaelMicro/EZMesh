@@ -66,7 +66,7 @@ $ sudo NAT64=1 module/border_router/ot-br-posix/script/bootstrap
 - All compoment building
   
   ```markdown
-  $ cmake -B build -S . -DOTBR_INFRA_IF_NAME=enp0s3 -DCONFIG_GEN_SYSTEM=true -DCONFIG_GEN_SYSTEM=true  -DCONFIG_BLUETOOTH=true -DCONFIG_BORDER_ROUTER=true -DCONFIG_ZIGBEE_GW_SERVICE=true -DCONFIG_SUBG_SERVICE=true \
+  $ cmake -B build -S . -DOTBR_INFRA_IF_NAME=enp0s3 -DCONFIG_GEN_SYSTEM=true -DCONFIG_GEN_SYSTEM=true  -DCONFIG_BLUETOOTH=true -DCONFIG_BORDER_ROUTER=true -DCONFIG_ZIGBEE_GW_SERVICE=true -DCONFIG_SUBG_SERVICE=true -DCONFIG_CHECK=true \
   && cmake --build ./build && sudo cmake --install ./build/ && sudo ldconfig
   ```
 
@@ -80,6 +80,7 @@ $ sudo NAT64=1 module/border_router/ot-br-posix/script/bootstrap
 |Platfrom config|CONFIG_GEN_SYSTEM|Generate systemd setup (for Ubuntu or debian)|**false**|-DCONFIG_GEN_SYSTEM=true|
 |Controller|CONFIG_CONTROLLER|Controller feature|**true**|-DCONFIG_CONTROLLER=true|
 |Controller|CONFIG_UPGRADE|Enable controller upgrade|**true**|-DCONFIG_UPGRADE=true|
+|Controller|CONFIG_CHECK|Check service statw|**false**|-DCONFIG_CHECK=true|
 |Bluetooth|CONFIG_BLUETOOTH|Bluetooth feature|**false**|-DCONFIG_BLUETOOTH=true|
 |Border Router|CONFIG_BORDER_ROUTER|Border Router feature|**false**|-DCONFIG_BORDER_ROUTER=true|
 |Zigbee Gateway|CONFIG_ZIGBEE_GW_SERVICE|Zigbee GW feature|**false**|-DCONFIG_ZIGBEE_GW_SERVICE=true|

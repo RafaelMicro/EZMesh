@@ -260,7 +260,7 @@ void *ezmesh_to_pty_func(void *ptr)
 
                 if (new_data) {
                     trigger_scan_disable = false;
-                    memcpy(&data_from_ezmesh[0], new_data, new_data_len);
+                    memmove(&data_from_ezmesh[0], new_data, new_data_len);
                     size = new_data_len;
                 } else {
                     printf("pass r %d-> %ld\n", trigger_scan_disable, size);

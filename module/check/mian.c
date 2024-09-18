@@ -60,6 +60,6 @@ int main(int argc, char *argv[])
         printf("check EZMesh daemon state: deaded , ret: %d\n", ret);
         exit(EXIT_FAILURE);
     }
-    printf("check EZMesh daemon state: alive\n");
+    puts(((ezmesh_handle_inst_t *)lib_handle.ptr)->agent_app_version);
     return 0;
 }
