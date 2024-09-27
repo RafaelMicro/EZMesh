@@ -850,13 +850,13 @@ void core_write(uint8_t endpoint_number, const void *message,
   transmit_queue_item->handle = buffer_handle;
 
   if (iframe == false) {
-    list_push_back(&transmit_queue, &transmit_queue_item->node);
+    list_push(&transmit_queue, &transmit_queue_item->node);
     core_process_transmit_queue();
   } else if (endpoint->current_tx_window_space <= 0)
     list_push_back(&endpoint->holding_list, &transmit_queue_item->node);
   else {
     endpoint->current_tx_window_space--;
-    list_push_back(&transmit_queue, &transmit_queue_item->node);
+    list_push(&transmit_queue, &transmit_queue_item->node);
     core_process_transmit_queue();
   }
 }
@@ -1175,7 +1175,7 @@ static void send_ack(endpoint_t *endpoint) {
 
   item->handle = handle;
 
-  list_push_back(&transmit_queue, &item->node);
+  list_push(&transmit_queue, &item->node);
   log_debug("Endpoint #%d sent ACK: %d", endpoint->id, endpoint->ack);
   core_process_transmit_queue();
   log_debug("[Core] EP #%u: txd ack", endpoint->id);
