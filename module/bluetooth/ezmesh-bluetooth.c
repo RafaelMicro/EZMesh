@@ -264,6 +264,7 @@ void *ezmesh_to_pty_func(void *ptr)
                     size = new_data_len;
                 } else {
                     printf("pass r %d-> %ld\n", trigger_scan_disable, size);
+                    /*
                     for (i = 0; i < size; i++)
                     {
                         if ((i & 0xF) == 8) printf(" -");
@@ -271,6 +272,7 @@ void *ezmesh_to_pty_func(void *ptr)
                         printf(" %02X", data_from_ezmesh[i]);
                     }
                     printf("\n\n");
+                    */
                     nanosleep((const struct timespec[]){{ 0, THREAD_SLEEP_NS } }, NULL);
                     continue;
                 }
@@ -278,8 +280,8 @@ void *ezmesh_to_pty_func(void *ptr)
             }
 
             if (write(pty_m, &data_from_ezmesh[0], size) == -1) perror("write error "); 
-
             printf("r %d-> %ld\n", trigger_scan_disable, size);
+/*
             for (i = 0; i < size; i++)
             {
                 if ((i & 0xF) == 8)
@@ -293,7 +295,7 @@ void *ezmesh_to_pty_func(void *ptr)
                 printf(" %02X", data_from_ezmesh[i]);
             }
             printf("\n\n");
-
+*/
             memset(&data_from_ezmesh[0], 0, FROM_EZMESH_BUF_SIZE);
         } else if (has_reset)
         {
@@ -338,6 +340,7 @@ void *pty_to_ezmesh_func(void *ptr)
                data_to_ezmesh[2] == 0x20 && data_to_ezmesh[3] == 0x02 && 
                data_to_ezmesh[4] == 0x00 && data_to_ezmesh[5] == 0x00 );
             printf("w %d-> %d\n", trigger_scan_disable, d_len);
+            /*
             for (i = 0; i < d_len; i++)
             {
                 if ((i & 0xF) == 8)
@@ -351,6 +354,7 @@ void *pty_to_ezmesh_func(void *ptr)
                 printf(" %02X", data_to_ezmesh[i]);
             }
             printf("\n\n");
+            */
             libezmesh_write_ep(endpoint, &data_to_ezmesh[0], d_len, 0);
             if (size > d_len)
                 libezmesh_write_ep(endpoint, &data_to_ezmesh[d_len], size - d_len, 0);

@@ -33,7 +33,6 @@ static void stdout_callback(log_Event *ev) {
   buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] = '\0';
   Tbuf[snprintf(Tbuf, sizeof(Tbuf), "%s.%03ld", buf, ev->tv.tv_usec / 1000)] = '\0';
   if (L.mode == LOG_MODE_SYS) fprintf(ev->udata, "%s %s%-5s\x1b[0m ", Tbuf, level_colors[ev->level], level_strings[ev->level]);
-  if (L.mode == LOG_MODE_SYS) fprintf(ev->udata, "%s %s%-5s\x1b[0m ", Tbuf, level_colors[ev->level], level_strings[ev->level]);
   else  fprintf(ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ", Tbuf, level_colors[ev->level], level_strings[ev->level], ev->file, ev->line);
 
   vfprintf(ev->udata, ev->fmt, ev->ap);
