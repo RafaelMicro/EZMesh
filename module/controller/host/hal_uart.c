@@ -463,15 +463,14 @@ int hal_uart_open(const char *device, unsigned int baudrate, bool hardflow) {
   drv_baudrate = baudrate;
 
   // Nonblocking
-  // tty.c_cc[VTIME] = 0;
-  // tty.c_cc[VMIN] = 1;
-  // tty.c_iflag &= (unsigned)~(IXON);
-  // tty.c_iflag &= (unsigned)~(IXOFF);
-  // tty.c_iflag &= (unsigned)~(IXANY);
-  // tty.c_cflag &= (unsigned)~(HUPCL);
-  // tty.c_cflag |= CLOCAL;
-  // tty.c_cflag = hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag &
-  // ~CRTSCTS);
+  tty.c_cc[VTIME] = 0;
+  tty.c_cc[VMIN] = 1;
+  tty.c_iflag &= (unsigned)~(IXON);
+  tty.c_iflag &= (unsigned)~(IXOFF);
+  tty.c_iflag &= (unsigned)~(IXANY);
+  tty.c_cflag &= (unsigned)~(HUPCL);
+  tty.c_cflag |= CLOCAL;
+  tty.c_cflag = hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag & ~CRTSCTS);
 
   CHECK_ERROR(tcsetattr(fd_dev_uart, TCSANOW, &tty) < 0);
   ioctl(fd_dev_uart, TIOCGSERIAL, &serial);
