@@ -92,6 +92,7 @@ if((TARGET_GROUP STREQUAL release) OR (TARGET_GROUP STREQUAL debug))
                 host/hal_kill.c
                 host/hal_sleep.c
                 host/hal_uart.c
+                host/hal_memory.c
                 utility/config.c
                 utility/list.c
                 utility/log.c

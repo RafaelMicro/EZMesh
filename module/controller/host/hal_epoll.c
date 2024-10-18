@@ -1,4 +1,5 @@
 #include "hal_epoll.h"
+#include "hal_memory.h"
 #include "utility/log.h"
 #include "utility/list.h"
 #include "utility/utility.h"
@@ -16,7 +17,7 @@
 typedef struct
 {
     list_node_t node;
-    struct hal_epoll_event_data *unregistered_epoll_port_private_data;
+    hal_epoll_event_data_t unregistered_epoll_data;
 } unwatched_endpoint_list_item_t;
 
 /* List to keep track of every connected library instance over the control socket */
@@ -32,16 +33,17 @@ void hal_epoll_init(void)
     list_init(&register_list);
 }
 
-// void hal_epoll_list_all(void)
+// static void hal_epoll_list_all(void)
 // {
 //     unwatched_endpoint_list_item_t *item = NULL;
 //     log_info("");
 //     SLIST_FOR_EACH_ENTRY(register_list, item, unwatched_endpoint_list_item_t, node)
 //     {
-//         log_info("[Epoll] List  data fd 0x%02x, EP %d, cb %p", 
-//             item->unregistered_epoll_port_private_data->file_descriptor, 
-//             item->unregistered_epoll_port_private_data->endpoint_number, 
-//             item->unregistered_epoll_port_private_data->callback);
+//         log_info("[Epoll] List  data fd 0x%02x, EP %d, cb %p, ptr %p", 
+//             item->unregistered_epoll_data.file_descriptor, 
+//             item->unregistered_epoll_data.endpoint_number, 
+//             item->unregistered_epoll_data.callback, 
+//             item);
 //     }
 //     log_info("");
 // }
@@ -49,15 +51,19 @@ void hal_epoll_init(void)
 void hal_epoll_register(hal_epoll_event_data_t *data)
 {
     VALID_EPOLL_DATA(data);
-    struct epoll_event event = {.events = EPOLLIN, .data.ptr = data};
+    struct epoll_event event;
+    memset(&event, 0, sizeof(event));
+    event.events = EPOLLIN;
+    event.data.ptr = data;
     CHECK_ERROR(epoll_ctl(fd_epoll, EPOLL_CTL_ADD, data->file_descriptor, &event) < 0);
     // hal_epoll_list_all();
     // log_info("[EPOLL] GEN: fd 0x%02x, ep %d, cb %p", data->file_descriptor, data->endpoint_number, data->callback);
 
-    unwatched_endpoint_list_item_t *item = calloc(1, sizeof(unwatched_endpoint_list_item_t));
+    unwatched_endpoint_list_item_t *item = (unwatched_endpoint_list_item_t *)HAL_MEM_ALLOC(sizeof(unwatched_endpoint_list_item_t));
     CHECK_ERROR(item == NULL);
-    item->unregistered_epoll_port_private_data = data;
-    memcpy(item->unregistered_epoll_port_private_data, data, sizeof(hal_epoll_event_data_t));
+    item->unregistered_epoll_data.callback = data->callback;
+    item->unregistered_epoll_data.endpoint_number = data->endpoint_number;
+    item->unregistered_epoll_data.file_descriptor = data->file_descriptor;
     list_push(&register_list, &item->node);
     // hal_epoll_list_all();
     return ;
@@ -68,13 +74,15 @@ void hal_epoll_unregister(hal_epoll_event_data_t *data)
     unwatched_endpoint_list_item_t *item = NULL;
     VALID_EPOLL_DATA(data);
     // hal_epoll_list_all();
-    // log_info("[EPOLL] Remove data fd 0x%02x, EP %d, cb %p", data->file_descriptor, data->endpoint_number, data->callback);
+    log_info("[EPOLL] Remove data fd 0x%02x, EP %d, cb %p", data->file_descriptor, data->endpoint_number, data->callback);
     SLIST_FOR_EACH_ENTRY(register_list, item, unwatched_endpoint_list_item_t, node)
     {
-        if (memcmp(data, item->unregistered_epoll_port_private_data, sizeof(unwatched_endpoint_list_item_t))==0)
+        if(data->file_descriptor == item->unregistered_epoll_data.file_descriptor && \
+           data->endpoint_number == item->unregistered_epoll_data.endpoint_number && \
+           data->callback == item->unregistered_epoll_data.callback)
         {
             list_remove(&register_list, &item->node);
-            free(item);
+            HAL_MEM_FREE(&item);
             break;
         }
     }
@@ -82,11 +90,13 @@ void hal_epoll_unregister(hal_epoll_event_data_t *data)
 
     SLIST_FOR_EACH_ENTRY(unwatched_endpoint_list, item, unwatched_endpoint_list_item_t, node)
     {
-        if (memcmp(data, item->unregistered_epoll_port_private_data, sizeof(unwatched_endpoint_list_item_t))==0)
+        if(data->file_descriptor == item->unregistered_epoll_data.file_descriptor && \
+           data->endpoint_number == item->unregistered_epoll_data.endpoint_number && \
+           data->callback == item->unregistered_epoll_data.callback)
         {
-            list_remove(&unwatched_endpoint_list, &item->node);
-            free(item);
-            return;
+            list_remove(&register_list, &item->node);
+            HAL_MEM_FREE(&item);
+            break;
         }
     }
     CHECK_ERROR(epoll_ctl(fd_epoll, EPOLL_CTL_DEL, data->file_descriptor, NULL) < 0);
@@ -95,9 +105,11 @@ void hal_epoll_unregister(hal_epoll_event_data_t *data)
 void hal_epoll_unwatch(hal_epoll_event_data_t *data)
 {
     hal_epoll_unregister(data);
-    unwatched_endpoint_list_item_t *item = calloc(1, sizeof(unwatched_endpoint_list_item_t));
+    unwatched_endpoint_list_item_t *item = (unwatched_endpoint_list_item_t *)HAL_MEM_ALLOC(sizeof(unwatched_endpoint_list_item_t));
     CHECK_ERROR(item == NULL);
-    item->unregistered_epoll_port_private_data = data;
+    item->unregistered_epoll_data.callback = data->callback;
+    item->unregistered_epoll_data.endpoint_number = data->endpoint_number;
+    item->unregistered_epoll_data.file_descriptor = data->file_descriptor;
     list_push(&unwatched_endpoint_list, &item->node);
 }
 
@@ -111,11 +123,11 @@ void hal_epoll_watch_back(uint8_t endpoint_number)
         item = SLIST_ENTRY(item_node, unwatched_endpoint_list_item_t, node);
         if (item == NULL) break;
         item_node = item_node->node;
-        if (endpoint_number == item->unregistered_epoll_port_private_data->endpoint_number)
+        if (endpoint_number == item->unregistered_epoll_data.endpoint_number)
         {
-            hal_epoll_register(item->unregistered_epoll_port_private_data);
+            hal_epoll_register(&item->unregistered_epoll_data);
             list_remove(&unwatched_endpoint_list, &item->node);
-            free(item);
+            HAL_MEM_FREE(&item);
         }
     }
 }

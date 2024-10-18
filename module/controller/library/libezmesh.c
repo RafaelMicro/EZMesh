@@ -188,7 +188,7 @@ static int get_agent_app_version(ezmesh_handle_inst_t *lib_handle)
     INIT_EZMESH_RET(int);
     int tmp_ret = 0;
 
-    char version[PROJECT_MAX_VERSION_SIZE]={0};
+    char version[PROJECT_MAX_VERSION_SIZE+16]={0};
 
 
     tmp_ret = ezmesh_query_exchange(lib_handle, lib_handle->ctrl_sock_fd,
@@ -210,9 +210,10 @@ static int check_version(ezmesh_handle_inst_t *lib_handle)
 {
     INIT_EZMESH_RET(int);
     int tmp_ret = 0;
-    char version[PROJECT_MAX_VERSION_SIZE];
+    char version[PROJECT_MAX_VERSION_SIZE+16]={0};
 
     strncpy(version, PROJECT_VER, PROJECT_MAX_VERSION_SIZE);
+    version[PROJECT_MAX_VERSION_SIZE - 1] = '\0';
 
     tmp_ret = ezmesh_query_exchange(lib_handle, lib_handle->ctrl_sock_fd,
                                  EXCHANGE_VERSION_QUERY, 0,

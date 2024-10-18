@@ -82,7 +82,7 @@ typedef struct
 typedef struct
 {
     void *hdlc_header;
-    const void *data;
+    void *data;
     uint16_t data_length;
     uint8_t fcs[2];
     uint8_t control;

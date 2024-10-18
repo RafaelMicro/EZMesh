@@ -9,7 +9,6 @@
 #include <signal.h>
 
 #define INST_NAME_LEN       100
-#define RETRY_COUNT         10
 #define TRANSMIT_WINDOW 1
 #define DEFAULT_DAEMON      "ezmeshd_0"
 
@@ -29,17 +28,12 @@ int main(int argc, char *argv[])
     signal(SIGTERM, signal_handler);
     strcpy(ezmesh_instance, (argc > 2) ? argv[2] : DEFAULT_DAEMON);
     
-    int ret, retry = 0;
-    do {
-        ret = libezmesh_init(&lib_handle, ezmesh_instance, reset_cb);
-        if (ret == 0) break;
-	    usleep(100000);
-    } while ((ret != 0) && (retry++ < RETRY_COUNT));
-
+    int ret = libezmesh_init(&lib_handle, ezmesh_instance, reset_cb);
     if (ret < 0) {
         printf("check EZMesh daemon state: deaded , ret: %d\n", ret);
         exit(EXIT_FAILURE);
     }
     puts(((ezmesh_handle_inst_t *)lib_handle.ptr)->agent_app_version);
+    ezmesh_deinit(&lib_handle);
     return 0;
 }

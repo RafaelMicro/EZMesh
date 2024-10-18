@@ -32,6 +32,7 @@
 #include "host/hal_epoll.h"
 #include "host/hal_kill.h"
 #include "host/hal_uart.h"
+#include "host/hal_memory.h"
 
 #include "controller.h"
 
@@ -56,6 +57,7 @@
 //=============================================================================
 bool ignore_reset_reason = true;
 static char *controller_agent_app_version = NULL;
+static size_t controller_agent_app_version_len = 0;
 static uint8_t controller_agent_protocol_version;
 static bool set_reset_mode_ack = false;
 static bool reset_ack = false;
@@ -280,9 +282,7 @@ static void __controller_get_agent_ezmesh_version_callback(sys_cmd_handle_t *han
                                                    status_t status)
 {
     (void)handle;
-
-    uint32_t version[3];
-    memcpy(version, property_value, 3 * sizeof(uint32_t));
+    uint32_t *version = property_value;
 
     if ((property_id != PROP_SECONDARY_EZMESH_VERSION)
         || (status != STATUS_OK && status != STATUS_IN_PROGRESS)
@@ -312,8 +312,9 @@ static void __controller_get_agent_app_version_callback(sys_cmd_handle_t *handle
 
         CHECK_FATAL(controller_agent_app_version);
 
-        controller_agent_app_version = calloc(1, property_length);
+        controller_agent_app_version = (char *)HAL_MEM_ALLOC(property_length);
         CHECK_ERROR(controller_agent_app_version == NULL);
+        controller_agent_app_version_len = property_length;
 
         strncpy(controller_agent_app_version, version, property_length - 1);
         controller_agent_app_version[property_length - 1] = '\0';
@@ -388,6 +389,7 @@ static void __controller_set_rf_cert_band_callback(sys_cmd_handle_t *handle,
     (void)handle;
     (void)property_id;
     (void)property_value;
+    (void)property_length;
 
     switch (status)
     {
@@ -607,7 +609,7 @@ pthread_t controller_init(int fd_socket_driver_ezmeshd, int fd_socket_driver_ezm
 
     const size_t path_len = strlen(config.ep_hw.socket_path) + strlen("/") + strlen(config.ep_hw.name) + sizeof(char);
   
-    socket_folder = (char *)calloc(1, path_len);
+    socket_folder = (char *)HAL_MEM_ALLOC(path_len);
     CHECK_ERROR(socket_folder == NULL);
 
     ret = snprintf(socket_folder, path_len, "%s/%s", config.ep_hw.socket_path, config.ep_hw.name);
@@ -626,7 +628,7 @@ pthread_t controller_init(int fd_socket_driver_ezmeshd, int fd_socket_driver_ezm
         CHECK_ERROR(ret < 0);
     }
 
-    free(socket_folder);
+    HAL_MEM_FREE(&socket_folder);
 
     kill_eventfd = eventfd(0, EFD_CLOEXEC);
     CHECK_ERROR(kill_eventfd == -1);
@@ -641,8 +643,9 @@ pthread_t controller_init(int fd_socket_driver_ezmeshd, int fd_socket_driver_ezm
     return controller_thread;
 }
 
-char *controller_get_agent_app_version(void)
+char *controller_get_agent_app_version(size_t *len)
 {
     CHECK_FATAL(controller_agent_app_version == NULL);
+    *len = controller_agent_app_version_len;
     return controller_agent_app_version;
 }

@@ -16,6 +16,7 @@
 #include "core.h"
 #include "daemon/primary/primary.h"
 #include "host/hal_epoll.h"
+#include "host/hal_memory.h"
 
 #define ABS(a) ((a) < 0 ? -(a) : (a))
 #define X_ENUM_TO_STR(x) #x
@@ -278,8 +279,7 @@ void core_init(int hal_fd, int hal_notify_fd) {
     ret = timerfd_settime(timer_fd, 0, &timeout_time, NULL);
     CHECK_ERROR(ret < 0);
 
-    event_epoll =
-        (hal_epoll_event_data_t *)calloc(1, sizeof(hal_epoll_event_data_t));
+    event_epoll = (hal_epoll_event_data_t *)HAL_MEM_ALLOC(sizeof(hal_epoll_event_data_t));
     CHECK_ERROR(event_epoll == NULL);
 
     event_epoll->callback = core_fetch_secondary_debug_counters;
@@ -407,9 +407,9 @@ static void core_proc_rx_hal_notification(hal_epoll_event_data_t *event_data) {
   case HDLC_FRAME_TYPE_UFRAME:
   case HDLC_FRAME_TYPE_SFRAME:
     if (frame->data_length != 0)
-      free((void *)frame->data);
-    free(frame->hdlc_header);
-    free(frame);
+      HAL_MEM_FREE(&frame->data);
+    HAL_MEM_FREE(&frame->hdlc_header);
+    HAL_MEM_FREE(&frame);
     break;
 
   default:
@@ -441,12 +441,12 @@ static void core_proc_rx_hal(hal_epoll_event_data_t *event_data) {
 
   if (!core_check_crc_sw(rx_frame->header, HDLC_HEADER_SIZE, hcs)) {
     // log_info_INVALID_HEADER_CHECKSUM();
-    free(rx_frame);
+    HAL_MEM_FREE(&rx_frame);
     return;
   }
 
-  data_length = rx_frame->header[HDLC_LENGTH_POS] |
-                (rx_frame->header[HDLC_LENGTH_POS + 1] << 8);
+  data_length = (uint16_t)(rx_frame->header[HDLC_LENGTH_POS] |
+                (rx_frame->header[HDLC_LENGTH_POS + 1] << 8));
   address = rx_frame->header[HDLC_ADDRESS_POS];
   control = rx_frame->header[HDLC_CONTROL_POS];
   type = control >> HDLC_CONTROL_FRAME_TYPE_POS;
@@ -465,7 +465,7 @@ static void core_proc_rx_hal(hal_epoll_event_data_t *event_data) {
   if (endpoint->state != ENDPOINT_STATE_OPEN) {
     if (type != HDLC_FRAME_TYPE_SFRAME)
       transmit_reject(NULL, address, 0, HDLC_REJECT_UNREACHABLE_ENDPOINT);
-    free(rx_frame);
+    HAL_MEM_FREE(&rx_frame);
     return;
   }
 
@@ -492,7 +492,7 @@ static void core_proc_rx_hal(hal_epoll_event_data_t *event_data) {
   }
   }
 
-  free(rx_frame);
+  HAL_MEM_FREE(&rx_frame);
 }
 
 bool core_endpoint_is_closing(uint8_t ep_id) {
@@ -533,12 +533,12 @@ static void core_proc_rx_iframe(frame_t *rx_frame) {
     return;
   }
 
-  payload_length = rx_frame->header[HDLC_LENGTH_POS] |
-                   (rx_frame->header[HDLC_LENGTH_POS + 1] << 8);
+  payload_length = (uint16_t)(rx_frame->header[HDLC_LENGTH_POS] |
+                   (rx_frame->header[HDLC_LENGTH_POS + 1] << 8));
   CHECK_ERROR(payload_length < HDLC_FCS_SIZE);
   payload_length = (uint16_t)(payload_length - HDLC_FCS_SIZE);
-  fcs = rx_frame->payload[payload_length] |
-        (rx_frame->payload[payload_length + 1] << 8);
+  fcs = (uint16_t)(rx_frame->payload[payload_length] |
+        (rx_frame->payload[payload_length + 1] << 8));
 
   if (!core_check_crc_sw(rx_frame->payload, payload_length, fcs)) {
     log_warn("payload_length: %d, fcs: %04X", payload_length, fcs);
@@ -616,9 +616,9 @@ static void core_proc_rx_sframe(frame_t *rx_frame) {
   new_state = endpoint->state;
   control = rx_frame->header[HDLC_CONTROL_POS];
   sframe_function = (control >> HDLC_CONTROL_SFRAME_FUNCTION_ID_POS) & 0x03;
-  data_length = rx_frame->header[HDLC_LENGTH_POS] |
-                (rx_frame->header[HDLC_LENGTH_POS + 1] << 8);
-  data_length = (data_length > 2) ? (uint16_t)(data_length - 2) : 0;
+  data_length = (uint16_t)(rx_frame->header[HDLC_LENGTH_POS] |
+                (rx_frame->header[HDLC_LENGTH_POS + 1] << 8));
+  data_length = (uint16_t)((data_length > 2) ? (data_length - 2) : 0);
   log_debug("[Core] EP #%u: rxd S-frame", endpoint->id);
 
   switch (sframe_function) {
@@ -699,14 +699,13 @@ static void core_proc_rx_uframe(frame_t *rx_frame) {
   type =
       (control >> HDLC_CONTROL_UFRAME_TYPE_POS) & HDLC_CONTROL_UFRAME_TYPE_MASK;
 
-  payload_length = rx_frame->header[HDLC_LENGTH_POS] |
-                   (rx_frame->header[HDLC_LENGTH_POS + 1] << 8);
-  payload_length =
-      (payload_length < 2) ? 0 : (uint16_t)(payload_length - HDLC_FCS_SIZE);
+  payload_length = (uint16_t)(rx_frame->header[HDLC_LENGTH_POS] |
+                   (rx_frame->header[HDLC_LENGTH_POS + 1] << 8));
+  payload_length = (uint16_t)((payload_length < 2) ? 0 : (payload_length - HDLC_FCS_SIZE));
 
   if (payload_length > 0) {
-    fcs = rx_frame->payload[payload_length] |
-          (rx_frame->payload[payload_length + 1] << 8);
+    fcs = (uint16_t)(rx_frame->payload[payload_length] |
+          (rx_frame->payload[payload_length + 1] << 8));
 
     if (!core_check_crc_sw(rx_frame->payload, payload_length, fcs)) {
       // log_debug_INVALID_PAYLOAD_CHECKSUM();
@@ -799,10 +798,10 @@ void core_write(uint8_t endpoint_number, const void *message,
     CHECK_ERROR(endpoint->flags & OPEN_EP_FLAG_IFRAME_DISABLE);
 
   do {
-    buffer_handle = (buffer_handle_t *)calloc(1, sizeof(buffer_handle_t));
+    buffer_handle = (buffer_handle_t *)HAL_MEM_ALLOC(sizeof(buffer_handle_t));
     CHECK_ERROR(buffer_handle == NULL);
 
-    payload = calloc(1, message_len);
+    payload = HAL_MEM_ALLOC(message_len);
     CHECK_ERROR(payload == NULL);
     memcpy(payload, message, message_len);
 
@@ -843,8 +842,7 @@ void core_write(uint8_t endpoint_number, const void *message,
     buffer_handle->fcs[1] = (uint8_t)(fcs >> 8);
   } while (0);
 
-  transmit_queue_item =
-      (transmit_queue_item_t *)calloc(1, sizeof(transmit_queue_item_t));
+  transmit_queue_item = (transmit_queue_item_t *)HAL_MEM_ALLOC(sizeof(transmit_queue_item_t));
   CHECK_ERROR(transmit_queue_item == NULL);
 
   transmit_queue_item->handle = buffer_handle;
@@ -892,7 +890,7 @@ void core_open_endpoint(uint8_t endpoint_number, uint8_t flags,
   timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
   CHECK_ERROR(timer_fd < 0);
 
-  event = (hal_epoll_event_data_t *)calloc(1, sizeof(hal_epoll_event_data_t));
+  event = (hal_epoll_event_data_t *)HAL_MEM_ALLOC(sizeof(hal_epoll_event_data_t));
   CHECK_ERROR(event == NULL);
   ep->retry_timer_data = event;
   event->callback = core_proc_endpoint_timeout;
@@ -952,12 +950,12 @@ static void core_clear_tx_queue(list_node_t **head, int endpoint_id) {
     if (!filter_with_endpoint_id ||
         (filter_with_endpoint_id && item->handle->address == ep_id)) {
       if (item->handle->pending_tx_complete == false) {
-        free(item->handle->hdlc_header);
+        HAL_MEM_FREE(&item->handle->hdlc_header);
         if (item->handle->data_length != 0)
-          free((void *)item->handle->data);
-        free(item->handle);
+          HAL_MEM_FREE(&item->handle->data);
+        HAL_MEM_FREE(&item->handle);
         list_remove(head, &item->node);
-        free(item);
+        HAL_MEM_FREE(&item);
       }
     }
 
@@ -989,7 +987,7 @@ status_t core_close_endpoint(uint8_t endpoint_number, bool notify_secondary,
   if (ep->retry_timer_data != NULL) {
     hal_epoll_unregister(ep->retry_timer_data);
     close(((hal_epoll_event_data_t *)ep->retry_timer_data)->file_descriptor);
-    free(ep->retry_timer_data);
+    HAL_MEM_FREE(&ep->retry_timer_data);
     ep->retry_timer_data = NULL;
   }
 
@@ -1131,10 +1129,10 @@ static void proc_ack(endpoint_t *endpoint, uint8_t ack) {
 
     if (endpoint->id == EP_SYSTEM && __hdlc_is_poll_final(control))
       sys_poll_ack(frame->data);
-    free((void *)frame->data);
-    free(frame->hdlc_header);
-    free(frame);
-    free(item);
+    HAL_MEM_FREE(&frame->data);
+    HAL_MEM_FREE(&frame->hdlc_header);
+    HAL_MEM_FREE(&frame);
+    HAL_MEM_FREE(&item);
 
     endpoint->frames_count_retry_queue--;
     endpoint->current_tx_window_space++;
@@ -1158,7 +1156,7 @@ static void send_ack(endpoint_t *endpoint) {
   buffer_handle_t *handle = NULL;
   transmit_queue_item_t *item = NULL;
 
-  handle = (buffer_handle_t *)calloc(1, sizeof(buffer_handle_t));
+  handle = (buffer_handle_t *)HAL_MEM_ALLOC(sizeof(buffer_handle_t));
   CHECK_ERROR(handle == NULL);
 
   handle->endpoint = endpoint;
@@ -1170,7 +1168,7 @@ static void send_ack(endpoint_t *endpoint) {
   control |= endpoint->ack;
   handle->control = control;
 
-  item = (transmit_queue_item_t *)calloc(1, sizeof(transmit_queue_item_t));
+  item = (transmit_queue_item_t *)HAL_MEM_ALLOC(sizeof(transmit_queue_item_t));
   CHECK_ERROR(item == NULL);
 
   item->handle = handle;
@@ -1206,7 +1204,7 @@ static void retry_frame(endpoint_t *endpoint) {
   }
   CHECK_ERROR(type != HDLC_FRAME_TYPE_IFRAME);
 
-  free(item->handle->hdlc_header);
+  HAL_MEM_FREE(&item->handle->hdlc_header);
 
   endpoint->packet_retry_count++;
   endpoint->frames_count_retry_queue--;
@@ -1224,7 +1222,7 @@ static void transmit_reject(endpoint_t *endpoint, uint8_t address, uint8_t ack,
   buffer_handle_t *handle = NULL;
   transmit_queue_item_t *item = NULL;
 
-  handle = (buffer_handle_t *)calloc(1, sizeof(buffer_handle_t));
+  handle = (buffer_handle_t *)HAL_MEM_ALLOC(sizeof(buffer_handle_t));
   CHECK_ERROR(handle == NULL);
 
   handle->address = address;
@@ -1236,7 +1234,7 @@ static void transmit_reject(endpoint_t *endpoint, uint8_t address, uint8_t ack,
   control |= ack;
   handle->control = control;
 
-  handle->data = calloc(1, sizeof(uint8_t));
+  handle->data = HAL_MEM_ALLOC(sizeof(uint8_t));
   CHECK_ERROR(handle->data == NULL);
 
   *((uint8_t *)handle->data) = (uint8_t)reason;
@@ -1246,7 +1244,7 @@ static void transmit_reject(endpoint_t *endpoint, uint8_t address, uint8_t ack,
   handle->fcs[0] = (uint8_t)(fcs && 0xFF);
   handle->fcs[1] = (uint8_t)(fcs >> 8);
 
-  item = (transmit_queue_item_t *)calloc(1, sizeof(transmit_queue_item_t));
+  item = (transmit_queue_item_t *)HAL_MEM_ALLOC(sizeof(transmit_queue_item_t));
   CHECK_ERROR(item == NULL);
 
   item->handle = handle;
@@ -1334,7 +1332,7 @@ static bool core_proc_tx_data(void) {
   item = SLIST_ENTRY(node, transmit_queue_item_t, node);
   frame = item->handle;
 
-  frame->hdlc_header = calloc(1, HDLC_HEADER_RAW_SIZE);
+  frame->hdlc_header = HAL_MEM_ALLOC(HDLC_HEADER_RAW_SIZE);
   CHECK_ERROR(frame->hdlc_header == NULL);
 
   total_length =
@@ -1356,7 +1354,7 @@ static bool core_proc_tx_data(void) {
   encrypted_data_length = frame->data_length;
   encrypted_payload = (uint8_t *)frame->data;
   frame_length = HDLC_HEADER_RAW_SIZE + total_length;
-  frame_buffer = (frame_t *)calloc(1, frame_length);
+  frame_buffer = (frame_t *)HAL_MEM_ALLOC(frame_length);
   CHECK_ERROR(frame_buffer == NULL);
 
   memcpy(frame_buffer->header, frame->hdlc_header, HDLC_HEADER_RAW_SIZE);
@@ -1373,9 +1371,9 @@ static bool core_proc_tx_data(void) {
 
   list_push_back(&pending_on_tx_complete, &tx_complete_item->node);
   core_push_frame_to_hal(frame_buffer, frame_length);
-  free(frame_buffer);
+  HAL_MEM_FREE(&frame_buffer);
   if (frame->data != encrypted_payload)
-    free((void *)encrypted_payload);
+    HAL_MEM_FREE(&encrypted_payload);
   log_debug("[Core] EP #%d: frame transmit submitted",
             (frame->endpoint == NULL) ? -1 : (signed)frame->endpoint->id);
 
@@ -1383,7 +1381,7 @@ static bool core_proc_tx_data(void) {
     list_push_back(&frame->endpoint->retry_queue, &item->node);
     frame->endpoint->frames_count_retry_queue++;
   } else
-    free(item);
+    HAL_MEM_FREE(&item);
   return true;
 }
 
@@ -1510,7 +1508,7 @@ static bool core_pull_frame_from_hal(frame_t **frame_buf,
   CHECK_ERROR(datagram_length == 0);
   CHECK_ERROR(datagram_length < sizeof(frame_t));
 
-  *frame_buf = (frame_t *)calloc(1, (size_t)datagram_length);
+  *frame_buf = (frame_t *)HAL_MEM_ALLOC((size_t)datagram_length);
   CHECK_ERROR(*frame_buf == NULL);
 
   ret = recv(hal_sock_fd, *frame_buf, (size_t)datagram_length, 0);
@@ -1556,7 +1554,7 @@ uint16_t core_compute_crc16(uint8_t new_byte, uint16_t prev_result) {
   uint8_t bit;
 
   for (bit = 0; bit < 8; bit++) {
-    prev_result ^= (new_byte & 0x01);
+    prev_result ^= (new_byte & 0x0001);
     prev_result =
         (prev_result & 0x01) ? (prev_result >> 1) ^ 0x8408 : (prev_result >> 1);
     new_byte = new_byte >> 1;
