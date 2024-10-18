@@ -2,6 +2,7 @@
 #include "stdio.h"
 #include "string.h"
 #include "common.h"
+#include <unistd.h>
 
 #define ED_NO_INDEX -1
 
@@ -99,7 +100,10 @@ static void Z2M_AEP(uint8_t *da, uint16_t len)
                     {
                         ED[ED_Index].ep_list[i].ep =  da[4 + i];
                         if( da[4 + i] > 0 &&  da[4 + i] <= 0xF0)
+                        {
+                            usleep(1000000);
                             gw_cmd_simple_desc_req(Shor_Address, ED[ED_Index].ep_list[i].ep);
+                        }
                     }
                 }
             }
