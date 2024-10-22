@@ -56,6 +56,7 @@
 //                  Global Data Definition
 //=============================================================================
 bool ignore_reset_reason = true;
+static hal_epoll_event_data_t* controller_epoll_data;
 static char *controller_agent_app_version = NULL;
 static size_t controller_agent_app_version_len = 0;
 static uint8_t controller_agent_protocol_version;
@@ -593,6 +594,23 @@ void controller_kill_signal(void)
 
     ret = write(kill_eventfd, &event_value, sizeof(event_value));
     CHECK_ERROR(ret != sizeof(event_value));
+
+}
+
+void controller_deinit_signal(void)
+{
+    hal_mem_table_clean();
+    ctl_deinit();
+    controller_deinit();
+}
+
+void controller_deinit(void){
+  log_info("[PRI] Controllor Deinit");
+  if(controller_epoll_data){
+    hal_epoll_unregister((hal_epoll_event_data_t*)controller_epoll_data);
+    HAL_MEM_FREE(&controller_epoll_data);
+  }
+  if(controller_agent_app_version) HAL_MEM_FREE(&controller_agent_app_version);
 }
 
 pthread_t controller_init(int fd_socket_driver_ezmeshd, int fd_socket_driver_ezmeshd_notify)
@@ -601,7 +619,7 @@ pthread_t controller_init(int fd_socket_driver_ezmeshd, int fd_socket_driver_ezm
     struct stat sb = { 0 };
     pthread_t controller_thread = { 0 };
     int ret = 0;
-    static hal_epoll_event_data_t event_data = {0};
+    // static hal_epoll_event_data_t event_data = {0};
 
     core_init(fd_socket_driver_ezmeshd, fd_socket_driver_ezmeshd_notify);
     sys_init();
@@ -615,14 +633,10 @@ pthread_t controller_init(int fd_socket_driver_ezmeshd, int fd_socket_driver_ezm
     ret = snprintf(socket_folder, path_len, "%s/%s", config.ep_hw.socket_path, config.ep_hw.name);
     CHECK_ERROR(ret < 0 || (size_t)ret >= path_len);
 
-    if (stat(socket_folder, &sb) == 0 && S_ISDIR(sb.st_mode))
-    {
-        log_info("[Controller] Remove socket folder %s", socket_folder);
-        __controller_remove_socket_folder(socket_folder);
-    } 
+    log_info("[Controller] Remove socket folder %s", socket_folder);
+    if (stat(socket_folder, &sb) == 0 && S_ISDIR(sb.st_mode)) __controller_remove_socket_folder(socket_folder);
     else
     {
-        log_info("[Controller] Remove socket folder %s", socket_folder);
         recursive_mkdir(socket_folder, strlen(socket_folder), S_IRWXU | S_IRWXG | S_ISVTX);
         ret = access(socket_folder, W_OK);
         CHECK_ERROR(ret < 0);
@@ -633,10 +647,11 @@ pthread_t controller_init(int fd_socket_driver_ezmeshd, int fd_socket_driver_ezm
     kill_eventfd = eventfd(0, EFD_CLOEXEC);
     CHECK_ERROR(kill_eventfd == -1);
 
-    event_data.callback = __controller_cleanup;
-    event_data.file_descriptor = kill_eventfd;
-    event_data.endpoint_number = 0;
-    hal_epoll_register(&event_data);
+    controller_epoll_data = (hal_epoll_event_data_t *)HAL_MEM_ALLOC(sizeof(hal_epoll_event_data_t));
+    controller_epoll_data->callback = __controller_cleanup;
+    controller_epoll_data->file_descriptor = kill_eventfd;
+    controller_epoll_data->endpoint_number = 0;
+    hal_epoll_register((hal_epoll_event_data_t*)controller_epoll_data);
 
     CHECK_ERROR(pthread_create(&controller_thread, NULL, __controller_loop, NULL) != 0);
     CHECK_ERROR(pthread_setname_np(controller_thread, "primary_ezmeshd") != 0);

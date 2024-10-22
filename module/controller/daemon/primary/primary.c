@@ -87,6 +87,7 @@ int open_conn_fd = 0;
 bool reset_sequence_ack = true;
 extern bool ignore_reset_reason;
 
+static ez_epoll_t *main_epoll_data;
 static list_node_t *pending_commands;
 static list_node_t *commands;
 static list_node_t *retries;
@@ -261,7 +262,6 @@ static void EP_push_close_socket_pair(int fd_data_socket, int fd_ctrl_data_socke
 
 static bool EP_find_close_socket_pair(int fd_data_socket, int fd_ctrl_data_socket, uint8_t endpoint_number)
 {
-  log_info("%s", __func__);
   ez_socket_close_t *item;
   ez_socket_close_t *next_item;
   bool found = false;
@@ -285,19 +285,18 @@ static bool EP_find_close_socket_pair(int fd_data_socket, int fd_ctrl_data_socke
 
 static void EP_close_connection(int fd_data_socket)
 {
-  ctrl_socket_data_list_t *item;
-  ctrl_socket_data_list_t *next_item;
+  ez_socket_list_t *item;
+  ez_socket_list_t *next_item;
 
-  item = SLIST_ENTRY(ctl_connections, ctrl_socket_data_list_t, node);
+  item = SLIST_ENTRY(ctl_connections, ez_socket_list_t, node);
   if (item == NULL) log_error("ctrl data connection not found in the linked list of the ctrl socket");
 
   do {
-    next_item = SLIST_ENTRY((item)->node.node, ctrl_socket_data_list_t, node);
-    if (item->data_socket_epoll_port_data.fd == fd_data_socket)
-    {
-      clean_socket(fd_data_socket, (hal_epoll_event_data_t *)&item->data_socket_epoll_port_data);
+    next_item = SLIST_ENTRY((item)->node.node, ez_socket_list_t, node);
+    if (item->data.fd == fd_data_socket) {
+      clean_socket(fd_data_socket, (hal_epoll_event_data_t *)&item->data);
       list_remove(&ctl_connections, &item->node);
-      free(item);
+      HAL_MEM_FREE(&item);
     }
     item = next_item;
   } while (item != NULL);
@@ -639,7 +638,7 @@ static void handle_main_node_event(ez_epoll_t *p_data) {
   }
   
   // log_debug("Received : %p", interface_buffer);
-  HAL_MEM_FREE(&interface_buffer);
+  HAL_MEM_FREE(&buffer);
 }
 
 static void handle_epoll_conn(ez_epoll_t *p_data) {
@@ -649,7 +648,7 @@ static void handle_epoll_conn(ez_epoll_t *p_data) {
 
   ep = p_data->ep;
   socket = accept_socket(p_data);
-  node = (ez_socket_list_t *)HAL_MEM_ALLOC(sizeof(ez_socket_list_t)+sizeof(list_node_t*));
+  node = (ez_socket_list_t *)HAL_MEM_ALLOC(sizeof(ez_socket_list_t)+sizeof(list_node_t));
   CHECK_ERROR(node == NULL);
   node->data.callback = (ep == 0)? handle_main_node_event : handle_node_event;
   node->data.ep = ep;
@@ -791,8 +790,16 @@ void ctl_notify_HW_reset(void)
   }
 }
 
+ez_err_t ctl_deinit(void){
+  log_info("[PRI] Primary Deinit");
+  if(main_epoll_data){
+    hal_epoll_unregister((hal_epoll_event_data_t*)main_epoll_data);
+    HAL_MEM_FREE(&main_epoll_data);
+  }
+  return NO_ERROR;
+}
+
 ez_err_t ctl_init(void) {
-  ez_epoll_t *ep_data  = (ez_epoll_t *)HAL_MEM_ALLOC(sizeof(ez_epoll_t));
 
   list_init(&ctl_connections);
   list_init(&connections);
@@ -808,11 +815,12 @@ ez_err_t ctl_init(void) {
     list_init(&ep_ctx[i].ctl_socket_data);
   }
 
-  ep_data->callback = handle_epoll_conn;
-  ep_data->fd = gen_socket(0);
-  ep_data->ep = EP_SYSTEM;
-  // log_info("[PRI] EPOLL ADD EVENT: fd 0x%02x, EP %d, cb: %p", ep_data->fd , EP_SYSTEM, ep_data->callback);
-  hal_epoll_register((hal_epoll_event_data_t*)ep_data);
+  main_epoll_data = (ez_epoll_t *)HAL_MEM_ALLOC(sizeof(ez_epoll_t));
+  main_epoll_data->callback = handle_epoll_conn;
+  main_epoll_data->fd = gen_socket(0);
+  main_epoll_data->ep = EP_SYSTEM;
+  // log_info("[PRI] EPOLL ADD EVENT: fd 0x%02x, EP %d, cb: %p", main_epoll_data->fd , EP_SYSTEM, main_epoll_data->callback);
+  hal_epoll_register((hal_epoll_event_data_t*)main_epoll_data);
   return NO_ERROR;
 }
 

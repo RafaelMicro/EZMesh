@@ -230,6 +230,22 @@ static void core_calculate_retry_timeout(endpoint_t *endpoint) {
   endpoint->retry_timeout_ms = rto;
 }
 
+static hal_epoll_event_data_t* core_rx_epoll_data = NULL;
+static hal_epoll_event_data_t* core_rx_notification_epoll_data = NULL;
+
+ez_err_t core_deinit(void){
+  log_info("[PRI] HDLC Core Deinit");
+  if(core_rx_notification_epoll_data){
+    hal_epoll_unregister((hal_epoll_event_data_t*)core_rx_notification_epoll_data);
+    HAL_MEM_FREE(&core_rx_notification_epoll_data);
+  }
+  if(core_rx_epoll_data){
+    hal_epoll_unregister((hal_epoll_event_data_t*)core_rx_epoll_data);
+    HAL_MEM_FREE(&core_rx_epoll_data);
+  }
+  return NO_ERROR;
+}
+
 void core_init(int hal_fd, int hal_notify_fd) {
   hal_sock_fd = hal_fd;
   hal_sock_notify_fd = hal_notify_fd;
@@ -251,17 +267,17 @@ void core_init(int hal_fd, int hal_notify_fd) {
     core_endpoints[i].packet_retry_count = 0;
   }
 
-  static hal_epoll_event_data_t event[2] = {0};
+  core_rx_epoll_data = (hal_epoll_event_data_t *)HAL_MEM_ALLOC(sizeof(hal_epoll_event_data_t));
+  core_rx_epoll_data->callback = core_proc_rx_hal;
+  core_rx_epoll_data->file_descriptor = hal_fd;
+  core_rx_epoll_data->endpoint_number = 0;
+  hal_epoll_register((hal_epoll_event_data_t*)core_rx_epoll_data);
 
-  event[0].callback = core_proc_rx_hal;
-  event[0].file_descriptor = hal_fd;
-  event[0].endpoint_number = 0;
-  hal_epoll_register(&event[0]);
-
-  event[1].callback = core_proc_rx_hal_notification;
-  event[1].file_descriptor = hal_notify_fd;
-  event[1].endpoint_number = 0;
-  hal_epoll_register(&event[1]);
+  core_rx_notification_epoll_data = (hal_epoll_event_data_t *)HAL_MEM_ALLOC(sizeof(hal_epoll_event_data_t));
+  core_rx_notification_epoll_data->callback = core_proc_rx_hal_notification;
+  core_rx_notification_epoll_data->file_descriptor = hal_notify_fd;
+  core_rx_notification_epoll_data->endpoint_number = 0;
+  hal_epoll_register((hal_epoll_event_data_t*)core_rx_notification_epoll_data);
 
   if (config.stats_interval > 0) {
     int ret = 0;
@@ -416,9 +432,7 @@ static void core_proc_rx_hal_notification(hal_epoll_event_data_t *event_data) {
     log_crash("Exit");
     break;
   }
-
-  // log_info("4");
-  // free(item);
+  HAL_MEM_FREE(&item);
 }
 
 static void core_proc_rx_hal(hal_epoll_event_data_t *event_data) {

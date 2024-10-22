@@ -22,7 +22,6 @@
 #include "utility/log.h"
 #include "host/hal_sleep.h"
 #include "version.h"
-
 #include "host/hal_uart.h"
 
 //=============================================================================
@@ -120,10 +119,12 @@ int main(int argc, char *argv[]) {
 }
 
 static void exit_daemon(void) {
-  hal_kill_signal();
+  hal_kill_signal_and_join();
+  ini_deinit();
   pthread_join(hal_thread, NULL);
   controller_kill_signal();
   pthread_join(primary_cpcd_thread, NULL);
+  controller_deinit_signal();
   log_info("Daemon exit : status %s", (exit_status == 0) ? "EXIT_SUCCESS" : "EXIT_FAILURE");
   exit(exit_status);
 }

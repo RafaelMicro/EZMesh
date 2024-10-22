@@ -218,6 +218,12 @@ int config_handler(void *user, const char *section, const char *name,
   return 1;
 }
 
+void ini_deinit(void) {
+  free(config.ep_hw.name);
+  free(config.ep_hw.port);
+  free(config.ep_hw.socket_path);
+}
+
 const struct option argv_list[] =
 {
     { "config", required_argument, 0, 'c' },

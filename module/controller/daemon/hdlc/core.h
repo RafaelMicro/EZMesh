@@ -187,6 +187,7 @@ typedef enum reject_reason
 } reject_reason_t;
 
 void hdlc_create_header(uint8_t *hdr, uint8_t address, uint16_t length, uint8_t control);
+ez_err_t core_deinit(void);
 void core_init(int driver_fd, int driver_notify_fd);
 void core_open_endpoint(uint8_t endpoit_number, uint8_t flags, uint8_t tx_win_size);
 void core_process_transmit_queue(void);
@@ -206,7 +207,5 @@ void core_set_endpoint_option(uint8_t endpoint_number, endpoint_option_t option,
 uint16_t core_compute_crc16(uint8_t new_byte, uint16_t prev_result);
 uint16_t core_get_crc_sw(const void *buffer, uint16_t buffer_length);
 bool core_check_crc_sw(const void *buffer, uint16_t buffer_length, uint16_t expected_crc);
-
-// -----------------------------------------------------------------------------
 
 #endif

@@ -74,7 +74,7 @@ void hal_epoll_unregister(hal_epoll_event_data_t *data)
     unwatched_endpoint_list_item_t *item = NULL;
     VALID_EPOLL_DATA(data);
     // hal_epoll_list_all();
-    log_info("[EPOLL] Remove data fd 0x%02x, EP %d, cb %p", data->file_descriptor, data->endpoint_number, data->callback);
+    // log_info("[EPOLL] Remove data fd 0x%02x, EP %d, cb %p", data->file_descriptor, data->endpoint_number, data->callback);
     SLIST_FOR_EACH_ENTRY(register_list, item, unwatched_endpoint_list_item_t, node)
     {
         if(data->file_descriptor == item->unregistered_epoll_data.file_descriptor && \

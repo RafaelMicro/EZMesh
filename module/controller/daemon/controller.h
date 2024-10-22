@@ -11,6 +11,8 @@
 bool controller_reset_sequence_in_progress(void);
 uint32_t controller_get_agent_rx_capability(void);
 void controller_kill_signal(void);
+void controller_deinit_signal(void);
+void controller_deinit(void);
 pthread_t controller_init(int fd_socket_driver_ezmeshd, int fd_socket_driver_ezmeshd_notify);
 char *controller_get_agent_app_version(size_t *len);
 

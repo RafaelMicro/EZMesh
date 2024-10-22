@@ -195,6 +195,7 @@ bool EP_is_open(uint8_t ep);
 ez_err_t EP_set_state(uint8_t ep, ep_state_t state);
 ez_err_t EP_push_data(uint8_t ep, uint8_t *data, size_t data_len);
 ez_err_t ctl_proc_conn(void);
+ez_err_t ctl_deinit(void);
 ez_err_t ctl_init(void);
 void ctl_notify_HW_reset(void);
 bool EP_list_empty(uint8_t ep);

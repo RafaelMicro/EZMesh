@@ -60,7 +60,7 @@ typedef int (*ini_handler)(void *user, const char *section, const char *name,
 typedef char *(*ini_reader)(char *str, int num, void *stream);
 
 int ini_parse(const char *filename, ini_handler handler, void *user);
-
+void ini_deinit(void);
 int config_handler(void *user, const char *section, const char *name,
                    const char *value);
 
