@@ -1,32 +1,32 @@
 // Copyright (c) Microsoft. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed under the MIT license. See LICENSE file in the project root for full
+// license information.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <signal.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/ioctl.h>
-#include <string.h>
-#include <errno.h>
-#include <pthread.h>
-#include "server.h"
 #include "Queue.h"
+#include "S2C.h"
 #include "common.h"
 #include "libezmesh.h"
-#include "S2C.h"
+#include "server.h"
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <errno.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-#define FROM_EZMESH_BUF_SIZE   LIB_EZMESH_READ_MINIMUM_SIZE
-#define EZMESH_RETRY_SLEEP_NS  100000000L
-#define EZMESH_RESET_SLEEP_NS  10000000L
-#define THREAD_SLEEP_NS     10000000L
-
+#define FROM_EZMESH_BUF_SIZE LIB_EZMESH_READ_MINIMUM_SIZE
+#define EZMESH_RETRY_SLEEP_NS 100000000L
+#define EZMESH_RESET_SLEEP_NS 10000000L
+#define THREAD_SLEEP_NS 10000000L
 
 static uint8_t data_from_ezmesh[FROM_EZMESH_BUF_SIZE];
 
-//Thread Ptr
+// Thread Ptr
 pthread_t tcp_server_listen;
 pthread_t mqtt_client_received;
 pthread_t thdQueue;
@@ -48,87 +48,72 @@ static void *tx_handler(void *ptr);
 
 char Write_ED_Table_flag;
 
+static void reset_cb(void) { printf("reset\r\n"); }
 
-static void reset_cb(void)
-{
-	printf("reset\r\n");
+static void signal_handler(int sig) {
+  (void)sig;
+  run = false;
 }
 
-static void signal_handler(int sig)
-{
-	(void)sig;
-	run = false;
+bool kbhit() {
+  int byteswaiting;
+  ioctl(0, FIONREAD, &byteswaiting);
+  return byteswaiting > 0;
 }
 
-bool kbhit()
-{
-    int byteswaiting;
-    ioctl(0, FIONREAD, &byteswaiting);
-    return byteswaiting > 0;
+void *Task_Console_Key_Event(void *arg) {
+  // static char  ReadkeyEvent[20];
+  //----------------------------
+  while (run) {
+    // ReadkeyEvent= getchar();
+    // scanf("%s",ReadkeyEvent);
+    if (kbhit()) {
+      int ch = getchar();
+      switch (ch) {
+      case 'p':
+        ch = getchar();
+        switch (ch) {
+        case 'j':
+          printf(LIGHT_BLUE "Set Coordinator Permit Join\n" NONE);
+
+          gw_cmd_pj();
+          break;
+        }
+        break;
+
+      case 'd':
+        show_dev_info();
+        break;
+      default:
+        break;
+      }
+    }
+    usleep(1000); // 1ms
+  }
+  printf("[Task_Console_Key_Event] close .... \n");
 }
 
-void* Task_Console_Key_Event(void* arg)
-{
-    // static char  ReadkeyEvent[20];
-    //----------------------------
-    while(run)
-    {
-		// ReadkeyEvent= getchar();
-		// scanf("%s",ReadkeyEvent);
-		if (kbhit())
-		{
-			int ch = getchar();
-			switch(ch)
-			{
-			case 'p':
-				ch = getchar();
-				switch(ch)
-				{
-				case 'j':
-					printf(LIGHT_BLUE"Set Coordinator Permit Join\n"NONE);
+void *Task_System(void *arg) {
 
-					gw_cmd_pj();
-					break;
-				}
-				break;
+  char line[150];
+  FILE *fp;
+  int filecnt = 0;
+  char checkcnt = 0;
 
-			case 'd' :
-				show_dev_info();
-				break;
-			default :
-				break;
-			}
-    	}
-		usleep(1000000); //1ms
-	}
-	printf("[Task_Console_Key_Event] close .... \n"); 
-}
+  Coordinator_Initial();
 
-void* Task_System(void* arg)
-{
-	
-	char	line[150];
-    FILE *fp;
-    int filecnt = 0;
-    char checkcnt = 0;
+  while (run) {
+    if (checkcnt++ > 1) {
+      checkcnt = 0;
 
-	Coordinator_Initial();
-    
-    while(run) 
-    {
-		if(checkcnt++>1)
-		{
-			checkcnt = 0;
-
-			if(Write_ED_Table_flag == true)
-			{
-				Write_ED_Table_flag = false;
-				Write_EndDevice_File(); //save to EndDevice_File	    	
-			}
-		}
-		usleep(1000000);
-    }   
-    printf("[Task_System] close .... \n");
+      if (Write_ED_Table_flag == true) {
+        Write_ED_Table_flag = false;
+        Write_EndDevice_File(); // save to EndDevice_File
+      }
+    }
+    usleep(1000);
+  }
+  printf("[Task_System] close .... \n");
 }
 #if 0
 void _ws_recv(rf_message_t msg){
@@ -156,93 +141,84 @@ static void ws_start()
 }
 #endif
 
-int main(int argc, char *argv[])
-{
-	int res;
+int main(int argc, char *argv[]) {
+  int res;
 
-	// Set up custom signal handler for user interrupt and termination request.
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);	
-	
-	tcp_server_start();
+  // Set up custom signal handler for user interrupt and termination request.
+  signal(SIGINT, signal_handler);
+  signal(SIGTERM, signal_handler);
 
-	// Thread for TCP Server listen to client
-	res = pthread_create(&tcp_server_listen,NULL,Task_tcp_server_listen,NULL);
+  tcp_server_start();
 
-	// Thread for que Z->A data
-	res = pthread_create(&thdQueue, NULL, Task_Queue, NULL);
+  // Thread for TCP Server listen to client
+  res = pthread_create(&tcp_server_listen, NULL, Task_tcp_server_listen, NULL);
 
+  // Thread for que Z->A data
+  res = pthread_create(&thdQueue, NULL, Task_Queue, NULL);
 
-	res = pthread_create(&thread_rx, NULL, rx_handler, NULL);
+  res = pthread_create(&thread_rx, NULL, rx_handler, NULL);
 
-	res = pthread_create(&thd_EndEvent, NULL, Task_Console_Key_Event, NULL);
+  res = pthread_create(&thd_EndEvent, NULL, Task_Console_Key_Event, NULL);
 
- 	strcpy(ezmesh_instance, "ezmeshd_0");
-       	
-	res = libezmesh_init(&lib_handle, ezmesh_instance, reset_cb);
+  strcpy(ezmesh_instance, "ezmeshd_0");
 
-	if (res < 0) {
-		perror("ezmesh_init ");
-		return res;
-	}
+  res = libezmesh_init(&lib_handle, ezmesh_instance, reset_cb);
 
-	res = libezmesh_open_ep(lib_handle, &endpoint, EP_ZIGBEE, 1);
-  
-	if (res < 0) {
-		perror("ezmesh_open_ep ");
-		return res;
-	}
-  
-	printf("Endpoint opened\n");
+  if (res < 0) {
+    perror("ezmesh_init ");
+    return res;
+  }
 
-	System_Initial();
-	Show_Fuction();
+  res = libezmesh_open_ep(lib_handle, &endpoint, EP_ZIGBEE, 1);
 
-	res = pthread_create(&thd_System, NULL,Task_System, NULL);
+  if (res < 0) {
+    perror("ezmesh_open_ep ");
+    return res;
+  }
 
-	//ws_start();
-	
-	while (run) {
+  printf("Endpoint opened\n");
 
-		nanosleep((const struct timespec[]){{ 0, EZMESH_RESET_SLEEP_NS } }, NULL);
-	}
+  System_Initial();
+  Show_Fuction();
 
-	return 0;
+  res = pthread_create(&thd_System, NULL, Task_System, NULL);
 
+  // ws_start();
+
+  while (run) {
+
+    nanosleep((const struct timespec[]){{0, EZMESH_RESET_SLEEP_NS}}, NULL);
+  }
+
+  return 0;
 }
 
-void ezmesh_write_data(uint8_t *pdata, uint16_t len)
-{
-	ssize_t ret;
-	ret = libezmesh_write_ep(endpoint, pdata, len, EP_WRITE_FLAG_NONE);
+void ezmesh_write_data(uint8_t *pdata, uint16_t len) {
+  ssize_t ret;
+  ret = libezmesh_write_ep(endpoint, pdata, len, EP_WRITE_FLAG_NONE);
 
-	if (ret < 0) {
-		perror("ezmesh_write_ep ");
-	}
+  if (ret < 0) {
+    perror("ezmesh_write_ep ");
+  }
 }
 
-void *rx_handler(void *ptr)
-{
-	ssize_t size = 0;
-	uint32_t cmd_index;
-	unsigned int rsp_cnt =0;
+void *rx_handler(void *ptr) {
+  ssize_t size = 0;
+  uint32_t cmd_index;
+  unsigned int rsp_cnt = 0;
 
-	// unused variable
-	(void)ptr;
+  // unused variable
+  (void)ptr;
 
-	while (run) 
-	{
-		// Read data from ezmesh
-		size = libezmesh_read_ep(endpoint,
-								&data_from_ezmesh[0],
-								FROM_EZMESH_BUF_SIZE,
-								EP_READ_FLAG_NON_BLOCKING);
-		if (size > 0) 
-		{
-			Queue_TX_Write(data_from_ezmesh, size);
-			memset(&data_from_ezmesh[0], 0, FROM_EZMESH_BUF_SIZE);
-		}
-		nanosleep((const struct timespec[]){{ 0, THREAD_SLEEP_NS } }, NULL);
-	}
+  while (run) {
+    // Read data from ezmesh
+    size = libezmesh_read_ep(endpoint, &data_from_ezmesh[0],
+                             FROM_EZMESH_BUF_SIZE, EP_READ_FLAG_NON_BLOCKING);
+    if (size > 0) {
+      Queue_TX_Write(data_from_ezmesh, size);
+      memset(&data_from_ezmesh[0], 0, FROM_EZMESH_BUF_SIZE);
+    }
+    nanosleep((const struct timespec[]){{0, THREAD_SLEEP_NS}}, NULL);
+  }
   return NULL;
 }
