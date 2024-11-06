@@ -1379,7 +1379,7 @@ static bool core_proc_tx_data(void) {
            sizeof(frame->fcs));
   frame->pending_tx_complete = true;
   tx_complete_item =
-      (transmit_queue_item_t *)malloc(sizeof(transmit_queue_item_t));
+      (transmit_queue_item_t *)HAL_MEM_ALLOC(sizeof(transmit_queue_item_t));
   CHECK_ERROR(tx_complete_item == NULL);
   tx_complete_item->handle = frame;
 

@@ -470,7 +470,7 @@ int hal_uart_open(const char *device, unsigned int baudrate, bool hardflow) {
   tty.c_iflag &= (unsigned)~(IXANY);
   tty.c_cflag &= (unsigned)~(HUPCL);
   tty.c_cflag |= CLOCAL;
-  tty.c_cflag = hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag & ~CRTSCTS);
+  tty.c_cflag |= hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag & ~CRTSCTS);
 
   CHECK_ERROR(tcsetattr(fd_dev_uart, TCSANOW, &tty) < 0);
   ioctl(fd_dev_uart, TIOCGSERIAL, &serial);
