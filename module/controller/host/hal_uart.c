@@ -315,9 +315,10 @@ static void *__hal_uart_transmit_thd(void *arg) {
     for (int i = 0; i < cnt; i++) {
       if (fd_cpcd == event[i].data.fd)
         __hal_uart_proc();
-      else if (fd_stop == event[i].data.fd)
+      else if (fd_stop == event[i].data.fd){
         log_info("[HAL] tx thread close");
         running = true;
+      }
     }
   }
 
@@ -351,9 +352,10 @@ static void *__hal_uart_receive_thd(void *arg) {
     for (int i = 0; i < cnt; i++) {
       if (fd_uart == event[i].data.fd) {
         __hal_uart_proc_fd();
-      } else if (fd_stop == event[i].data.fd)
+      } else if (fd_stop == event[i].data.fd){
         log_info("[HAL] rx thread close");
         running = true;
+      }
     }
   }
 
