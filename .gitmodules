@@ -7,6 +7,3 @@
 [submodule "third_party/libexpat"]
 	path = third_party/libexpat
 	url = https://github.com/libexpat/libexpat.git
-[submodule "EZMesh-Agent/Src/Rafael-IoT-SDK"]
-	path = EZMesh-Agent/Src/Rafael-IoT-SDK
-	url = https://github.com/RafaelMicro/Rafael-IoT-SDK.git
