@@ -85,7 +85,7 @@ static bool __hdlc_header_validate(uint8_t *hdr) {
 
   if (!core_check_crc_sw(hdr, HDLC_HEADER_SIZE, hcs)) {
     primary_cpcd_debug_counters.invalid_header_checksum++;
-    log_error("invalid header checksum in driver");
+    // log_error("invalid header checksum in driver");
     return false;
   }
 
@@ -315,7 +315,7 @@ static void *__hal_uart_transmit_thd(void *arg) {
     for (int i = 0; i < cnt; i++) {
       if (fd_cpcd == event[i].data.fd)
         __hal_uart_proc();
-      else if (fd_stop == event[i].data.fd){
+      else if (fd_stop == event[i].data.fd) {
         log_info("[HAL] tx thread close");
         running = true;
       }
@@ -352,7 +352,7 @@ static void *__hal_uart_receive_thd(void *arg) {
     for (int i = 0; i < cnt; i++) {
       if (fd_uart == event[i].data.fd) {
         __hal_uart_proc_fd();
-      } else if (fd_stop == event[i].data.fd){
+      } else if (fd_stop == event[i].data.fd) {
         log_info("[HAL] rx thread close");
         running = true;
       }
@@ -474,7 +474,8 @@ int hal_uart_open(const char *device, unsigned int baudrate, bool hardflow) {
   // tty.c_iflag &= (unsigned)~(IXANY);
   // tty.c_cflag &= (unsigned)~(HUPCL);
   // tty.c_cflag |= CLOCAL;
-  // tty.c_cflag |= hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag & ~CRTSCTS);
+  // tty.c_cflag |= hardflow ? (tty.c_cflag | CRTSCTS) : (tty.c_cflag &
+  // ~CRTSCTS);
 
   CHECK_ERROR(tcsetattr(fd_dev_uart, TCSANOW, &tty) < 0);
   ioctl(fd_dev_uart, TIOCGSERIAL, &serial);
