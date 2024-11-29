@@ -4,46 +4,46 @@ START=96
 
 USE_PROCD=1
 
-prog=/usr/bin/ez-bluetooth
-pid=/var/run/ez-bluetooth.pid
-log=/tmp/ez-bluetooth.log
+PROG=/usr/bin/ez-bluetooth
+PID=/var/run/ez-bluetooth.pid
+LOG=/tmp/ez-bluetooth.log
 
 start_service() {
     procd_open_instance "ez-bluetooth"
-    procd_set_param command sh -c "cd /tmp&&${prog}"
+    procd_set_param command sh -c "cd /tmp&&$PROG"
     procd_set_param respawn
     procd_set_param stdout 1
     procd_set_param stderr 1
-    procd_set_param pidfile ${pid}
+    procd_set_param pidfile $PID
     procd_close_instance
 }
 
 service_started() {
-    echo "Wait $(uptime)" >>${log}
+    echo "Wait $(uptime)" >>$LOG
     sleep 1
-    _count=0
+    COUNT=0
     while [ ! -h /tmp/pts_hci ]; do
         sleep 1
-        _count=$((_count + 1))
-        echo "${_count} $(uptime)" >>${log}
-        if [ "30" = "${_count}" ]; then
+        COUNT=$((COUNT + 1))
+        echo "$COUNT $(uptime)" >>$LOG
+        if [ "30" = "$COUNT" ]; then
             break
         fi
     done
     if [ -h /tmp/pts_hci ]; then
-        echo "attach -- /tmp/pts_hci $(uptime)" >>${log}
+        echo "attach -- /tmp/pts_hci $(uptime)" >>$LOG
         /usr/bin/hciattach /tmp/pts_hci any
-        _err=$?
-        echo "attach -- A ${_err}, $(uptime)" >>${log}
+        ERR=$?
+        echo "attach -- A $ERR, $(uptime)" >>$LOG
         hciconfig hci0 up
-        _err=$?
-        echo "attach -- B ${_err}, $(uptime)" >>${log}
+        ERR=$?
+        echo "attach -- B $ERR, $(uptime)" >>$LOG
         kill -9 $(pidof hciattach) ### peter add to fix cpcd stop hold
-        _err=$?
-        echo "attach -- C ${_err}, $(uptime)" >>${log}
+        ERR=$?
+        echo "attach -- C $ERR, $(uptime)" >>$LOG
 
     else
-        echo "attach -- err not found /tmp/pts_hci $(uptime)" >>${log}
+        echo "attach -- err not found /tmp/pts_hci $(uptime)" >>$LOG
     fi
 
     # sleep 1
