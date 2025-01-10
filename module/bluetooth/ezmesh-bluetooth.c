@@ -12,8 +12,8 @@
 
 #define LOG_TAG "ezmesh-bluetooth"
 
-#define TO_EZMESH_BUF_SIZE     400
-#define FROM_EZMESH_BUF_SIZE   LIB_EZMESH_READ_MINIMUM_SIZE
+#define TO_EZMESH_BUF_SIZE     1024
+#define FROM_EZMESH_BUF_SIZE   4087
 #define INST_NAME_LEN       100
 #define RETRY_COUNT         300
 #define EZMESH_RETRY_SLEEP_NS  100000000L
@@ -251,7 +251,7 @@ void *ezmesh_to_pty_func(void *ptr)
         size = libezmesh_read_ep(endpoint,
                               &data_from_ezmesh[0],
                               FROM_EZMESH_BUF_SIZE,
-                              EP_READ_FLAG_NON_BLOCKING);
+                              0);
         if (size > 0)
         {
             if(trigger_scan_disable){
@@ -281,7 +281,7 @@ void *ezmesh_to_pty_func(void *ptr)
 
             if (write(pty_m, &data_from_ezmesh[0], size) == -1) perror("write error "); 
             printf("r %d-> %ld\n", trigger_scan_disable, size);
-/*
+#if 0
             for (i = 0; i < size; i++)
             {
                 if ((i & 0xF) == 8)
@@ -295,7 +295,7 @@ void *ezmesh_to_pty_func(void *ptr)
                 printf(" %02X", data_from_ezmesh[i]);
             }
             printf("\n\n");
-*/
+#endif
             memset(&data_from_ezmesh[0], 0, FROM_EZMESH_BUF_SIZE);
         } else if (has_reset)
         {
@@ -331,17 +331,17 @@ void *pty_to_ezmesh_func(void *ptr)
             if (data_to_ezmesh[0] == 0x02)
             {
                 d_len = (data_to_ezmesh[3] | (data_to_ezmesh[4] << 8)) + 5;
-            } else
+            } else if(data_to_ezmesh[0] == 0x01)
             {
-                d_len = data_to_ezmesh[3] + 4;
+               d_len = data_to_ezmesh[3] + 4;
             }
 
             trigger_scan_disable = (data_to_ezmesh[0] == 0x01 && data_to_ezmesh[1] == 0x0C && 
                data_to_ezmesh[2] == 0x20 && data_to_ezmesh[3] == 0x02 && 
                data_to_ezmesh[4] == 0x00 && data_to_ezmesh[5] == 0x00 );
-            printf("w %d-> %d\n", trigger_scan_disable, d_len);
-            /*
-            for (i = 0; i < d_len; i++)
+	    trigger_scan_disable = 0;
+#if 0            
+            for (i = 0; i < size; i++)
             {
                 if ((i & 0xF) == 8)
                 {
@@ -354,10 +354,24 @@ void *pty_to_ezmesh_func(void *ptr)
                 printf(" %02X", data_to_ezmesh[i]);
             }
             printf("\n\n");
-            */
-            libezmesh_write_ep(endpoint, &data_to_ezmesh[0], d_len, 0);
-            if (size > d_len)
-                libezmesh_write_ep(endpoint, &data_to_ezmesh[d_len], size - d_len, 0);
+#endif            
+      while(size > 0) {
+        if (data_to_ezmesh[0] == 0x02) {
+          d_len = (data_to_ezmesh[3] | (data_to_ezmesh[4] << 8)) + 5;
+        } else if(data_to_ezmesh[0] == 0x01) {
+          d_len = data_to_ezmesh[3] + 4;
+        }
+        printf("w %d-> %d\n", trigger_scan_disable, d_len);
+        libezmesh_write_ep(endpoint, &data_to_ezmesh[0], d_len, 0);
+	if(size-d_len == 0)
+	{
+	  size = 0;
+	  break;
+	 }
+        memmove(&data_to_ezmesh[0], &data_to_ezmesh[d_len], (size - d_len));
+	size -= d_len;
+	nanosleep((const struct timespec[]){{ 0, THREAD_SLEEP_NS } }, NULL);
+      } 
             memset(&data_to_ezmesh[0], 0, TO_EZMESH_BUF_SIZE);
         } else if (has_reset)
         {

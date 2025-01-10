@@ -188,7 +188,12 @@ ez_err_t EP_push_data(uint8_t ep, uint8_t *data, size_t data_len) {
 
       if (ep_ctx[ep].conn_count == 1 && nb_clients == 1 &&
           (errno == EAGAIN || errno == EWOULDBLOCK))
-        return SYS_TO_ERR_STATUE(STATUS_WOULD_BLOCK);
+	      return SYS_TO_ERR_STATUE(STATUS_WOULD_BLOCK);
+
+
+      hal_epoll_unregister((hal_epoll_event_data_t *)&item->data);
+      log_info("fd %d, ep %d, cb %x", item->data.fd, item->data.ep,
+               item->data.callback);
 
       handle_ep_send(item->data.fd, -1, ep);
 
@@ -655,6 +660,9 @@ static void handle_epoll_conn(ez_epoll_t *p_data) {
   node->data.fd = socket;
   list_push(&ep_ctx[ep].epoll_data, &node->node);
   hal_epoll_register((hal_epoll_event_data_t*)&node->data);
+
+  log_info("epoll connection on ep#%d, fd %d, cb 0x%X", ep, socket,
+           node->data.callback);
 
   if(ep == 0){ list_push(&ctl_connections, &node->node); }
   else
@@ -1260,6 +1268,10 @@ static void on_reply(uint8_t endpoint_id, void *arg, void *answer, uint32_t answ
     {
       CHECK_FATAL(handle->retx_socket.fd <= 0);
       hal_epoll_unregister((hal_epoll_event_data_t*)&handle->retx_socket);
+      hal_epoll_event_data_t *retx_socket = (hal_epoll_event_data_t *)&handle->retx_socket;
+      log_info("[PRI] Command ID #%u SEQ #%u acknowledged",
+               handle->command->command_id, handle->command->command_seq);
+      log_info("fd %ld, ep %ld, cb %x", retx_socket->file_descriptor, retx_socket->endpoint_number, retx_socket->callback); 
       close(handle->retx_socket.fd);
       handle->retx_socket.fd = 0;
     }

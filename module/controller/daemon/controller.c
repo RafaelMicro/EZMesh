@@ -140,7 +140,7 @@ static void *__controller_loop(void *param)
         for (size_t i = 0; i < (size_t)cnt; i++)
         {
             hal_epoll_event_data_t *event_data = (hal_epoll_event_data_t *)events[i].data.ptr;
-            // log_info("EPOLL EVENT: fd 0x%02x, EP %d, cb: %p", event_data->file_descriptor, event_data->endpoint_number, event_data->callback);
+            //log_info("EPOLL EVENT: fd 0x%02x, EP %d, cb: %p", event_data->file_descriptor, event_data->endpoint_number, event_data->callback);
             if(event_data->callback != NULL) event_data->callback(event_data);
         }
         ctl_proc_conn();

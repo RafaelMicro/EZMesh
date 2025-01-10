@@ -524,7 +524,7 @@ void core_process_endpoint_change(uint8_t endpoint_number,
     return;
   }
   if (core_endpoints[endpoint_number].state != ENDPOINT_STATE_OPEN)
-    core_open_endpoint(endpoint_number, 0, 1);
+    core_open_endpoint(endpoint_number, 0, 4);
   return;
 }
 
@@ -1161,15 +1161,16 @@ static void proc_ack(endpoint_t *endpoint, uint8_t ack) {
     if (endpoint->retry_queue == NULL)
       break;
   }
-
+#if 1
   while (endpoint->holding_list != NULL &&
          endpoint->current_tx_window_space > 0) {
     list_node_t *item = list_pop(&endpoint->holding_list);
     list_push_back(&transmit_queue, item);
     endpoint->current_tx_window_space--;
-    hal_epoll_watch_back(endpoint->id);
+    //hal_epoll_watch_back(endpoint->id);
+    log_info("Endpoint #%d: watching back", endpoint->id);
   }
-
+#endif
   log_debug("[Core] EP #%u: rxd ack %u", endpoint->id, ack);
 }
 
