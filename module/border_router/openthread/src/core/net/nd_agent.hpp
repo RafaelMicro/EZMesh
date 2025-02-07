@@ -52,7 +52,6 @@ public:
      * Initializes the object.
      *
      * @param[in]  aInstance  A reference to the OpenThread instance.
-     *
      */
     explicit Agent(Instance &aInstance)
         : InstanceLocator(aInstance)
@@ -62,15 +61,8 @@ public:
 
     /**
      * Updates the Neighbor Discovery Agents using current Thread Network Data.
-     *
      */
     void UpdateService(void);
-
-    /**
-     * Updates the prefix of the Neighbor Discovery Agent Anycast Locator.
-     *
-     */
-    void ApplyMeshLocalPrefix(void);
 
 private:
     void FreeAloc(void) { mAloc.mNext = &mAloc; }

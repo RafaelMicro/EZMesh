@@ -115,6 +115,10 @@ otbrError DBusMessageEncode(DBusMessageIter *aIter, const Nat64ErrorCounters &aC
 otbrError DBusMessageExtract(DBusMessageIter *aIter, Nat64ErrorCounters &aCounters);
 otbrError DBusMessageEncode(DBusMessageIter *aIter, const InfraLinkInfo &aInfraLinkInfo);
 otbrError DBusMessageExtract(DBusMessageIter *aIter, InfraLinkInfo &aInfraLinkInfo);
+otbrError DBusMessageEncode(DBusMessageIter *aIter, const TrelInfo &aTrelInfo);
+otbrError DBusMessageExtract(DBusMessageIter *aIter, TrelInfo &aTrelInfo);
+otbrError DBusMessageEncode(DBusMessageIter *aIter, const TrelInfo::TrelPacketCounters &aCounters);
+otbrError DBusMessageExtract(DBusMessageIter *aIter, TrelInfo::TrelPacketCounters &aCounters);
 
 template <typename T> struct DBusTypeTrait;
 
@@ -382,6 +386,21 @@ template <> struct DBusTypeTrait<Nat64ErrorCounters>
     static constexpr const char *TYPE_AS_STRING = "((tt)(tt)(tt)(tt))";
 };
 
+template <> struct DBusTypeTrait<TrelInfo>
+{
+    // struct of { bool,
+    //             uint16,
+    //             struct of {
+    //               uint64, uint64, uint64, uint64, uint64 } }
+    static constexpr const char *TYPE_AS_STRING = "(bq(ttttt))";
+};
+
+template <> struct DBusTypeTrait<TrelInfo::TrelPacketCounters>
+{
+    // struct of { uint64, uint64, uint64, uint64, uint64 }
+    static constexpr const char *TYPE_AS_STRING = "(ttttt)";
+};
+
 template <> struct DBusTypeTrait<InfraLinkInfo>
 {
     // struct of { string, bool, bool, bool, uint32, uint32, uint32 }
@@ -447,6 +466,8 @@ template <> struct DBusTypeTrait<bool>
     static constexpr int         TYPE           = DBUS_TYPE_BOOLEAN;
     static constexpr const char *TYPE_AS_STRING = DBUS_TYPE_BOOLEAN_AS_STRING;
 };
+
+otbrError DbusMessageIterRecurse(DBusMessageIter *aIter, DBusMessageIter *aSubIter, int aType);
 
 otbrError DBusMessageEncode(DBusMessageIter *aIter, bool aValue);
 otbrError DBusMessageEncode(DBusMessageIter *aIter, int8_t aValue);

@@ -81,9 +81,9 @@ namespace otbr {
 
 namespace TrelDnssd {
 
-TrelDnssd::TrelDnssd(Ncp::ControllerOpenThread &aNcp, Mdns::Publisher &aPublisher)
+TrelDnssd::TrelDnssd(Host::RcpHost &aHost, Mdns::Publisher &aPublisher)
     : mPublisher(aPublisher)
-    , mNcp(aNcp)
+    , mHost(aHost)
 {
     sTrelDnssd = this;
 }
@@ -91,6 +91,9 @@ TrelDnssd::TrelDnssd(Ncp::ControllerOpenThread &aNcp, Mdns::Publisher &aPublishe
 void TrelDnssd::Initialize(std::string aTrelNetif)
 {
     mTrelNetif = std::move(aTrelNetif);
+    // Reset mTrelNetifIndex to 0 so that when this function is called with a different aTrelNetif
+    // than the current mTrelNetif, CheckTrelNetifReady() will update mTrelNetifIndex accordingly.
+    mTrelNetifIndex = 0;
 
     if (IsInitialized())
     {
@@ -188,9 +191,9 @@ exit:
     return;
 }
 
-void TrelDnssd::OnMdnsPublisherReady(void)
+void TrelDnssd::HandleMdnsState(Mdns::Publisher::State aState)
 {
-    VerifyOrExit(IsInitialized());
+    VerifyOrExit(aState == Mdns::Publisher::State::kReady);
 
     otbrLogDebug("mDNS Publisher is Ready");
     mMdnsPublisherReady = true;
@@ -201,6 +204,7 @@ void TrelDnssd::OnMdnsPublisherReady(void)
         mRegisterInfo.mInstanceName = "";
     }
 
+    VerifyOrExit(IsInitialized());
     OnBecomeReady();
 
 exit:
@@ -228,7 +232,7 @@ exit:
 
 std::string TrelDnssd::GetTrelInstanceName(void)
 {
-    const otExtAddress *extaddr = otLinkGetExtendedAddress(mNcp.GetInstance());
+    const otExtAddress *extaddr = otLinkGetExtendedAddress(mHost.GetInstance());
     std::string         name;
     char                nameBuf[sizeof(otExtAddress) * 2 + 1];
 
@@ -249,7 +253,7 @@ void TrelDnssd::PublishTrelService(void)
 
     mRegisterInfo.mInstanceName = GetTrelInstanceName();
     mPublisher.PublishService(/* aHostName */ "", mRegisterInfo.mInstanceName, kTrelServiceName,
-                              Mdns::Publisher::SubTypeList{}, mRegisterInfo.mPort, mRegisterInfo.mTxtEntries,
+                              Mdns::Publisher::SubTypeList{}, mRegisterInfo.mPort, mRegisterInfo.mTxtData,
                               [](otbrError aError) { HandlePublishTrelServiceError(aError); });
 }
 
@@ -282,6 +286,7 @@ void TrelDnssd::HandleUnpublishTrelServiceError(otbrError aError)
 void TrelDnssd::OnTrelServiceInstanceAdded(const Mdns::Publisher::DiscoveredInstanceInfo &aInstanceInfo)
 {
     std::string        instanceName = StringUtils::ToLowercase(aInstanceInfo.mName);
+    Ip6Address         selectedAddress;
     otPlatTrelPeerInfo peerInfo;
 
     // Remove any existing TREL service instance before adding
@@ -295,6 +300,21 @@ void TrelDnssd::OnTrelServiceInstanceAdded(const Mdns::Publisher::DiscoveredInst
     for (const auto &addr : aInstanceInfo.mAddresses)
     {
         otbrLogDebug("Peer address: %s", addr.ToString().c_str());
+
+        // Skip anycast (Refer to https://datatracker.ietf.org/doc/html/rfc2373#section-2.6.1)
+        if (addr.m64[1] == 0)
+        {
+            continue;
+        }
+
+        // If there are multiple addresses, we prefer the address
+        // which is numerically smallest. This prefers GUA over ULA
+        // (`fc00::/7`) and then link-local (`fe80::/10`).
+
+        if (selectedAddress.IsUnspecified() || (addr < selectedAddress))
+        {
+            selectedAddress = addr;
+        }
     }
 
     if (aInstanceInfo.mAddresses.empty())
@@ -304,7 +324,7 @@ void TrelDnssd::OnTrelServiceInstanceAdded(const Mdns::Publisher::DiscoveredInst
     }
 
     peerInfo.mRemoved = false;
-    memcpy(&peerInfo.mSockAddr.mAddress, &aInstanceInfo.mAddresses[0], sizeof(peerInfo.mSockAddr.mAddress));
+    memcpy(&peerInfo.mSockAddr.mAddress, &selectedAddress, sizeof(peerInfo.mSockAddr.mAddress));
     peerInfo.mSockAddr.mPort = aInstanceInfo.mPort;
     peerInfo.mTxtData        = aInstanceInfo.mTxtData.data();
     peerInfo.mTxtLength      = aInstanceInfo.mTxtData.size();
@@ -314,7 +334,7 @@ void TrelDnssd::OnTrelServiceInstanceAdded(const Mdns::Publisher::DiscoveredInst
 
         VerifyOrExit(peer.mValid, otbrLogWarning("Peer %s is invalid", aInstanceInfo.mName.c_str()));
 
-        otPlatTrelHandleDiscoveredPeerInfo(mNcp.GetInstance(), &peerInfo);
+        otPlatTrelHandleDiscoveredPeerInfo(mHost.GetInstance(), &peerInfo);
 
         mPeers.emplace(instanceName, peer);
         CheckPeersNumLimit();
@@ -375,7 +395,7 @@ void TrelDnssd::NotifyRemovePeer(const Peer &aPeer)
     peerInfo.mTxtLength = aPeer.mTxtData.size();
     peerInfo.mSockAddr  = aPeer.mSockAddr;
 
-    otPlatTrelHandleDiscoveredPeerInfo(mNcp.GetInstance(), &peerInfo);
+    otPlatTrelHandleDiscoveredPeerInfo(mHost.GetInstance(), &peerInfo);
 }
 
 void TrelDnssd::RemoveAllPeers(void)
@@ -461,18 +481,11 @@ uint16_t TrelDnssd::CountDuplicatePeers(const TrelDnssd::Peer &aPeer)
 
 void TrelDnssd::RegisterInfo::Assign(uint16_t aPort, const uint8_t *aTxtData, uint8_t aTxtLength)
 {
-    otbrError error;
-
-    OTBR_UNUSED_VARIABLE(error);
-
     assert(!IsPublished());
     assert(aPort > 0);
 
     mPort = aPort;
-    mTxtEntries.clear();
-
-    error = Mdns::Publisher::DecodeTxtData(mTxtEntries, aTxtData, aTxtLength);
-    assert(error == OTBR_ERROR_NONE);
+    mTxtData.assign(aTxtData, aTxtData + aTxtLength);
 }
 
 void TrelDnssd::RegisterInfo::Clear(void)
@@ -480,7 +493,7 @@ void TrelDnssd::RegisterInfo::Clear(void)
     assert(!IsPublished());
 
     mPort = 0;
-    mTxtEntries.clear();
+    mTxtData.clear();
 }
 
 const char TrelDnssd::Peer::kTxtRecordExtAddressKey[] = "xa";
@@ -495,7 +508,12 @@ void TrelDnssd::Peer::ReadExtAddrFromTxtData(void)
 
     for (const auto &txtEntry : txtEntries)
     {
-        if (StringUtils::EqualCaseInsensitive(txtEntry.mName, kTxtRecordExtAddressKey))
+        if (txtEntry.mIsBooleanAttribute)
+        {
+            continue;
+        }
+
+        if (StringUtils::EqualCaseInsensitive(txtEntry.mKey, kTxtRecordExtAddressKey))
         {
             VerifyOrExit(txtEntry.mValue.size() == sizeof(mExtAddr));
 

@@ -48,6 +48,10 @@
 
 namespace ot {
 
+namespace Utils {
+class MeshDiag;
+}
+
 namespace NetworkDiagnostic {
 
 /**
@@ -63,7 +67,6 @@ class Client;
 
 /**
  * Implements the Network Diagnostic server responding to requests.
- *
  */
 class Server : public InstanceLocator, private NonCopyable
 {
@@ -75,7 +78,6 @@ public:
      * Initializes the Server.
      *
      * @param[in] aInstance   The OpenThread instance.
-     *
      */
     explicit Server(Instance &aInstance);
 
@@ -84,7 +86,6 @@ public:
      * Returns the vendor name string.
      *
      * @returns The vendor name string.
-     *
      */
     const char *GetVendorName(void) const { return mVendorName; }
 
@@ -95,7 +96,6 @@ public:
      *
      * @retval kErrorNone         Successfully set the vendor name.
      * @retval kErrorInvalidArgs  @p aVendorName is not valid (too long or not UTF8).
-     *
      */
     Error SetVendorName(const char *aVendorName);
 
@@ -103,7 +103,6 @@ public:
      * Returns the vendor model string.
      *
      * @returns The vendor model string.
-     *
      */
     const char *GetVendorModel(void) const { return mVendorModel; }
 
@@ -114,7 +113,6 @@ public:
      *
      * @retval kErrorNone         Successfully set the vendor model.
      * @retval kErrorInvalidArgs  @p aVendorModel is not valid (too long or not UTF8).
-     *
      */
     Error SetVendorModel(const char *aVendorModel);
 
@@ -122,7 +120,6 @@ public:
      * Returns the vendor software version string.
      *
      * @returns The vendor software version string.
-     *
      */
     const char *GetVendorSwVersion(void) const { return mVendorSwVersion; }
 
@@ -133,38 +130,103 @@ public:
      *
      * @retval kErrorNone         Successfully set the vendor sw version.
      * @retval kErrorInvalidArgs  @p aVendorSwVersion is not valid (too long or not UTF8).
-     *
      */
     Error SetVendorSwVersion(const char *aVendorSwVersion);
+
+    /**
+     * Returns the vendor app URL string.
+     *
+     * @returns the vendor app URL string.
+     */
+    const char *GetVendorAppUrl(void) const { return mVendorAppUrl; }
+
+    /**
+     * Sets the vendor app URL string.
+     *
+     * @param[in] aVendorAppUrl     The vendor app URL string
+     *
+     * @retval kErrorNone         Successfully set the vendor app URL.
+     * @retval kErrorInvalidArgs  @p aVendorAppUrl is not valid (too long or not UTF8).
+     */
+    Error SetVendorAppUrl(const char *aVendorAppUrl);
 
 #else
     const char *GetVendorName(void) const { return kVendorName; }
     const char *GetVendorModel(void) const { return kVendorModel; }
     const char *GetVendorSwVersion(void) const { return kVendorSwVersion; }
+    const char *GetVendorAppUrl(void) const { return kVendorAppUrl; }
 #endif // OPENTHREAD_CONFIG_NET_DIAG_VENDOR_INFO_SET_API_ENABLE
 
 private:
-    static constexpr uint16_t kMaxChildEntries = 398;
+    static constexpr uint16_t kMaxChildEntries              = 398;
+    static constexpr uint16_t kAnswerMessageLengthThreshold = 800;
+
+#if OPENTHREAD_FTD
+    struct AnswerInfo
+    {
+        AnswerInfo(void)
+            : mAnswerIndex(0)
+            , mQueryId(0)
+            , mHasQueryId(false)
+            , mFirstAnswer(nullptr)
+        {
+        }
+
+        uint16_t          mAnswerIndex;
+        uint16_t          mQueryId;
+        bool              mHasQueryId;
+        Message::Priority mPriority;
+        Coap::Message    *mFirstAnswer;
+    };
+#endif
 
     static const char kVendorName[];
     static const char kVendorModel[];
     static const char kVendorSwVersion[];
+    static const char kVendorAppUrl[];
 
     Error AppendDiagTlv(uint8_t aTlvType, Message &aMessage);
     Error AppendIp6AddressList(Message &aMessage);
     Error AppendMacCounters(Message &aMessage);
-    Error AppendChildTable(Message &aMessage);
     Error AppendRequestedTlvs(const Message &aRequest, Message &aResponse);
     void  PrepareMessageInfoForDest(const Ip6::Address &aDestination, Tmf::MessageInfo &aMessageInfo) const;
+
+#if OPENTHREAD_MTD
+    void SendAnswer(const Ip6::Address &aDestination, const Message &aRequest);
+#elif OPENTHREAD_FTD
+    Error       AllocateAnswer(Coap::Message *&aAnswer, AnswerInfo &aInfo);
+    Error       CheckAnswerLength(Coap::Message *&aAnswer, AnswerInfo &aInfo);
+    bool        IsLastAnswer(const Coap::Message &aAnswer) const;
+    void        FreeAllRelatedAnswers(Coap::Message &aFirstAnswer);
+    void        PrepareAndSendAnswers(const Ip6::Address &aDestination, const Message &aRequest);
+    void        SendNextAnswer(Coap::Message &aAnswer, const Ip6::Address &aDestination);
+    Error       AppendChildTable(Message &aMessage);
+    Error       AppendChildTableAsChildTlvs(Coap::Message *&aAnswer, AnswerInfo &aInfo);
+    Error       AppendRouterNeighborTlvs(Coap::Message *&aAnswer, AnswerInfo &aInfo);
+    Error       AppendChildTableIp6AddressList(Coap::Message *&aAnswer, AnswerInfo &aInfo);
+    Error       AppendChildIp6AddressListTlv(Coap::Message &aAnswer, const Child &aChild);
+
+    static void HandleAnswerResponse(void                *aContext,
+                                     otMessage           *aMessage,
+                                     const otMessageInfo *aMessageInfo,
+                                     otError              aResult);
+    void        HandleAnswerResponse(Coap::Message          &aNextAnswer,
+                                     Coap::Message          *aResponse,
+                                     const Ip6::MessageInfo *aMessageInfo,
+                                     Error                   aResult);
+#endif
 
     template <Uri kUri> void HandleTmf(Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
 
 #if OPENTHREAD_CONFIG_NET_DIAG_VENDOR_INFO_SET_API_ENABLE
-    Error SetVendorString(char *aDestString, uint16_t kMaxSize, const char *aSrcString);
-
     VendorNameTlv::StringType      mVendorName;
     VendorModelTlv::StringType     mVendorModel;
     VendorSwVersionTlv::StringType mVendorSwVersion;
+    VendorAppUrlTlv::StringType    mVendorAppUrl;
+#endif
+
+#if OPENTHREAD_FTD
+    Coap::MessageQueue mAnswerQueue;
 #endif
 };
 
@@ -176,11 +238,11 @@ DeclareTmfHandler(Server, kUriDiagnosticGetAnswer);
 
 /**
  * Implements the Network Diagnostic client sending requests and queries.
- *
  */
 class Client : public InstanceLocator, private NonCopyable
 {
     friend class Tmf::Agent;
+    friend class Utils::MeshDiag;
 
 public:
     typedef otNetworkDiagIterator          Iterator;    ///< Iterator to go through TLVs in `GetNextDiagTlv()`.
@@ -194,7 +256,6 @@ public:
      * Initializes the Client.
      *
      * @param[in] aInstance   The OpenThread instance.
-     *
      */
     explicit Client(Instance &aInstance);
 
@@ -207,7 +268,6 @@ public:
      * @param[in]  aCount            Number of types in @p aTlvTypes.
      * @param[in]  aCallback         Callback when Network Diagnostic Get response is received (can be NULL).
      * @param[in]  Context           Application-specific context used with @p aCallback.
-     *
      */
     Error SendDiagnosticGet(const Ip6::Address &aDestination,
                             const uint8_t       aTlvTypes[],
@@ -221,7 +281,6 @@ public:
      * @param[in] aDestination  The destination address.
      * @param[in] aTlvTypes     An array of Network Diagnostic TLV types.
      * @param[in] aCount        Number of types in aTlvTypes
-     *
      */
     Error SendDiagnosticReset(const Ip6::Address &aDestination, const uint8_t aTlvTypes[], uint8_t aCount);
 
@@ -235,12 +294,19 @@ public:
      * @retval kErrorNone       Successfully found the next Network Diagnostic TLV.
      * @retval kErrorNotFound   No subsequent Network Diagnostic TLV exists in the message.
      * @retval kErrorParse      Parsing the next Network Diagnostic failed.
-     *
      */
     static Error GetNextDiagTlv(const Coap::Message &aMessage, Iterator &aIterator, TlvInfo &aTlvInfo);
 
+    /**
+     * This method returns the query ID used for the last Network Diagnostic Query command.
+     *
+     * @returns The query ID used for last query.
+     */
+    uint16_t GetLastQueryId(void) const { return mQueryId; }
+
 private:
     Error SendCommand(Uri                   aUri,
+                      Message::Priority     aPriority,
                       const Ip6::Address   &aDestination,
                       const uint8_t         aTlvTypes[],
                       uint8_t               aCount,
@@ -250,7 +316,7 @@ private:
     static void HandleGetResponse(void                *aContext,
                                   otMessage           *aMessage,
                                   const otMessageInfo *aMessageInfo,
-                                  Error                aResult);
+                                  otError              aResult);
     void        HandleGetResponse(Coap::Message *aMessage, const Ip6::MessageInfo *aMessageInfo, Error aResult);
 
     template <Uri kUri> void HandleTmf(Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
@@ -259,6 +325,7 @@ private:
     static const char *UriToString(Uri aUri);
 #endif
 
+    uint16_t              mQueryId;
     Callback<GetCallback> mGetCallback;
 };
 

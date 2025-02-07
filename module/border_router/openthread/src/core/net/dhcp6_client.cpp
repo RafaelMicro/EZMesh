@@ -35,15 +35,7 @@
 
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
 
-#include "common/as_core_type.hpp"
-#include "common/code_utils.hpp"
-#include "common/encoding.hpp"
-#include "common/instance.hpp"
-#include "common/locator_getters.hpp"
-#include "common/log.hpp"
-#include "mac/mac.hpp"
-#include "net/dhcp6.hpp"
-#include "thread/thread_netif.hpp"
+#include "instance/instance.hpp"
 
 namespace ot {
 namespace Dhcp6 {
@@ -52,12 +44,12 @@ RegisterLogModule("Dhcp6Client");
 
 Client::Client(Instance &aInstance)
     : InstanceLocator(aInstance)
-    , mSocket(aInstance)
+    , mSocket(aInstance, *this)
     , mTrickleTimer(aInstance, Client::HandleTrickleTimer)
     , mStartTime(0)
     , mIdentityAssociationCurrent(nullptr)
 {
-    memset(mIdentityAssociations, 0, sizeof(mIdentityAssociations));
+    ClearAllBytes(mIdentityAssociations);
 }
 
 bool Client::MatchNetifAddressWithPrefix(const Ip6::Netif::UnicastAddress &aNetifAddress, const Ip6::Prefix &aIp6Prefix)
@@ -170,7 +162,7 @@ void Client::Start(void)
 {
     VerifyOrExit(!mSocket.IsBound());
 
-    IgnoreError(mSocket.Open(&Client::HandleUdpReceive, this));
+    IgnoreError(mSocket.Open(Ip6::kNetifThreadInternal));
     IgnoreError(mSocket.Bind(kDhcpClientPort));
 
     ProcessNextIdentityAssociation();
@@ -278,7 +270,7 @@ void Client::Solicit(uint16_t aRloc16)
 #else
     messageInfo.GetPeerAddr().SetToRoutingLocator(Get<Mle::MleRouter>().GetMeshLocalPrefix(), aRloc16);
 #endif
-    messageInfo.SetSockAddr(Get<Mle::MleRouter>().GetMeshLocal16());
+    messageInfo.SetSockAddr(Get<Mle::MleRouter>().GetMeshLocalRloc());
     messageInfo.mPeerPort = kDhcpServerPort;
 
     SuccessOrExit(error = mSocket.SendTo(*message, messageInfo));
@@ -288,7 +280,7 @@ exit:
     if (error != kErrorNone)
     {
         FreeMessage(message);
-        LogWarn("Failed to send DHCPv6 Solicit: %s", ErrorToString(error));
+        LogWarnOnError(error, "send DHCPv6 Solicit");
     }
 }
 
@@ -393,11 +385,6 @@ Error Client::AppendRapidCommit(Message &aMessage)
 
     option.Init();
     return aMessage.Append(option);
-}
-
-void Client::HandleUdpReceive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
-{
-    static_cast<Client *>(aContext)->HandleUdpReceive(AsCoreType(aMessage), AsCoreType(aMessageInfo));
 }
 
 void Client::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageInfo)

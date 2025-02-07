@@ -35,11 +35,7 @@
 
 #if OPENTHREAD_CONFIG_MESH_DIAG_ENABLE && OPENTHREAD_FTD
 
-#include <openthread/mesh_diag.h>
-
-#include "common/as_core_type.hpp"
-#include "common/locator_getters.hpp"
-#include "utils/mesh_diag.hpp"
+#include "instance/instance.hpp"
 
 using namespace ot;
 
@@ -62,6 +58,30 @@ otError otMeshDiagGetNextIp6Address(otMeshDiagIp6AddrIterator *aIterator, otIp6A
 otError otMeshDiagGetNextChildInfo(otMeshDiagChildIterator *aIterator, otMeshDiagChildInfo *aChildInfo)
 {
     return AsCoreType(aIterator).GetNextChildInfo(AsCoreType(aChildInfo));
+}
+
+otError otMeshDiagQueryChildTable(otInstance                       *aInstance,
+                                  uint16_t                          aRloc16,
+                                  otMeshDiagQueryChildTableCallback aCallback,
+                                  void                             *aContext)
+{
+    return AsCoreType(aInstance).Get<Utils::MeshDiag>().QueryChildTable(aRloc16, aCallback, aContext);
+}
+
+otError otMeshDiagQueryChildrenIp6Addrs(otInstance                     *aInstance,
+                                        uint16_t                        aRloc16,
+                                        otMeshDiagChildIp6AddrsCallback aCallback,
+                                        void                           *aContext)
+{
+    return AsCoreType(aInstance).Get<Utils::MeshDiag>().QueryChildrenIp6Addrs(aRloc16, aCallback, aContext);
+}
+
+otError otMeshDiagQueryRouterNeighborTable(otInstance                                *aInstance,
+                                           uint16_t                                   aRloc16,
+                                           otMeshDiagQueryRouterNeighborTableCallback aCallback,
+                                           void                                      *aContext)
+{
+    return AsCoreType(aInstance).Get<Utils::MeshDiag>().QueryRouterNeighborTable(aRloc16, aCallback, aContext);
 }
 
 #endif // OPENTHREAD_CONFIG_MESH_DIAG_ENABLE && OPENTHREAD_FTD

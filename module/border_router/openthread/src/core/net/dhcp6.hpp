@@ -48,9 +48,6 @@
 namespace ot {
 namespace Dhcp6 {
 
-using ot::Encoding::BigEndian::HostSwap16;
-using ot::Encoding::BigEndian::HostSwap32;
-
 /**
  * @addtogroup core-dhcp6
  *
@@ -58,7 +55,6 @@ using ot::Encoding::BigEndian::HostSwap32;
  *   This module includes definitions for DHCPv6.
  *
  * @{
- *
  */
 
 constexpr uint16_t kDhcpClientPort       = 546;
@@ -68,7 +64,6 @@ constexpr uint16_t kHardwareTypeEthernet = 1;
 
 /**
  * DHCPv6 Message Types
- *
  */
 enum Type : uint8_t
 {
@@ -92,7 +87,6 @@ enum Type : uint8_t
 
 /**
  * Represents a DHCP6 transaction identifier.
- *
  */
 OT_TOOL_PACKED_BEGIN
 class TransactionId : public Equatable<TransactionId>, public Clearable<TransactionId>
@@ -105,7 +99,6 @@ public:
      *
      * @retval kErrorNone     Successfully generated a random transaction identifier.
      * @retval kErrorFailed   Failed to generate random sequence.
-     *
      */
     Error GenerateRandom(void)
     {
@@ -120,7 +113,6 @@ private:
 
 /**
  * Implements DHCPv6 header.
- *
  */
 OT_TOOL_PACKED_BEGIN
 class Header : public Clearable<Header>
@@ -130,7 +122,6 @@ public:
      * Returns the DHCPv6 message type.
      *
      * @returns The DHCPv6 message type.
-     *
      */
     Type GetType(void) const { return mType; }
 
@@ -138,7 +129,6 @@ public:
      * Sets the DHCPv6 message type.
      *
      * @param[in]  aType  The DHCPv6 message type.
-     *
      */
     void SetType(Type aType) { mType = aType; }
 
@@ -146,7 +136,6 @@ public:
      * Returns the DHCPv6 message transaction identifier.
      *
      * @returns The DHCPv6 message transaction identifier.
-     *
      */
     const TransactionId &GetTransactionId(void) const { return mTransactionId; }
 
@@ -154,7 +143,6 @@ public:
      * Sets the DHCPv6 message transaction identifier.
      *
      * @param[in]  aTransactionId  The DHCPv6 message transaction identifier.
-     *
      */
     void SetTransactionId(const TransactionId &aTransactionId) { mTransactionId = aTransactionId; }
 
@@ -165,7 +153,6 @@ private:
 
 /**
  * DHCPv6 Option Codes.
- *
  */
 enum Code : uint16_t
 {
@@ -195,7 +182,6 @@ enum Code : uint16_t
 
 /**
  * Implements DHCPv6 option.
- *
  */
 OT_TOOL_PACKED_BEGIN
 class Option
@@ -203,7 +189,6 @@ class Option
 public:
     /**
      * Initializes the DHCPv6 option to all zeros.
-     *
      */
     void Init(void)
     {
@@ -215,33 +200,29 @@ public:
      * Returns the DHCPv6 option code.
      *
      * @returns The DHCPv6 option code.
-     *
      */
-    Code GetCode(void) const { return static_cast<Code>(HostSwap16(mCode)); }
+    Code GetCode(void) const { return static_cast<Code>(BigEndian::HostSwap16(mCode)); }
 
     /**
      * Sets the DHCPv6 option code.
      *
      * @param[in]  aCode  The DHCPv6 option code.
-     *
      */
-    void SetCode(Code aCode) { mCode = HostSwap16(static_cast<uint16_t>(aCode)); }
+    void SetCode(Code aCode) { mCode = BigEndian::HostSwap16(static_cast<uint16_t>(aCode)); }
 
     /**
      * Returns the length of DHCPv6 option.
      *
      * @returns The length of DHCPv6 option.
-     *
      */
-    uint16_t GetLength(void) const { return HostSwap16(mLength); }
+    uint16_t GetLength(void) const { return BigEndian::HostSwap16(mLength); }
 
     /**
      * Sets the length of DHCPv6 option.
      *
      * @param[in]  aLength  The length of DHCPv6 option.
-     *
      */
-    void SetLength(uint16_t aLength) { mLength = HostSwap16(aLength); }
+    void SetLength(uint16_t aLength) { mLength = BigEndian::HostSwap16(aLength); }
 
 private:
     uint16_t mCode;
@@ -250,7 +231,6 @@ private:
 
 /**
  * DHCP6 Unique Identifier (DUID) Type.
- *
  */
 enum DuidType : uint16_t
 {
@@ -265,7 +245,6 @@ class ClientIdentifier : public Option
 public:
     /**
      * Initializes the DHCPv6 Option.
-     *
      */
     void Init(void)
     {
@@ -277,39 +256,37 @@ public:
      * Returns the client DUID Type.
      *
      * @returns The client DUID Type.
-     *
      */
-    DuidType GetDuidType(void) const { return static_cast<DuidType>(HostSwap16(mDuidType)); }
+    DuidType GetDuidType(void) const { return static_cast<DuidType>(BigEndian::HostSwap16(mDuidType)); }
 
     /**
      * Sets the client DUID Type.
      *
      * @param[in]  aDuidType  The client DUID Type.
-     *
      */
-    void SetDuidType(DuidType aDuidType) { mDuidType = HostSwap16(static_cast<uint16_t>(aDuidType)); }
+    void SetDuidType(DuidType aDuidType) { mDuidType = BigEndian::HostSwap16(static_cast<uint16_t>(aDuidType)); }
 
     /**
      * Returns the client Duid HardwareType.
      *
      * @returns The client Duid HardwareType.
-     *
      */
-    uint16_t GetDuidHardwareType(void) const { return HostSwap16(mDuidHardwareType); }
+    uint16_t GetDuidHardwareType(void) const { return BigEndian::HostSwap16(mDuidHardwareType); }
 
     /**
      * Sets the client Duid HardwareType.
      *
      * @param[in]  aDuidHardwareType  The client Duid HardwareType.
-     *
      */
-    void SetDuidHardwareType(uint16_t aDuidHardwareType) { mDuidHardwareType = HostSwap16(aDuidHardwareType); }
+    void SetDuidHardwareType(uint16_t aDuidHardwareType)
+    {
+        mDuidHardwareType = BigEndian::HostSwap16(aDuidHardwareType);
+    }
 
     /**
      * Returns the client LinkLayerAddress.
      *
      * @returns The link-layer address.
-     *
      */
     const Mac::ExtAddress &GetDuidLinkLayerAddress(void) const { return mDuidLinkLayerAddress; }
 
@@ -317,7 +294,6 @@ public:
      * Sets the client LinkLayerAddress.
      *
      * @param[in]  aDuidLinkLayerAddress  The client LinkLayerAddress.
-     *
      */
     void SetDuidLinkLayerAddress(const Mac::ExtAddress &aDuidLinkLayerAddress)
     {
@@ -336,7 +312,6 @@ class ServerIdentifier : public Option
 public:
     /**
      * Initializes the DHCPv6 Option.
-     *
      */
     void Init(void)
     {
@@ -348,39 +323,37 @@ public:
      * Returns the server DUID Type.
      *
      * @returns The server DUID Type.
-     *
      */
-    DuidType GetDuidType(void) const { return static_cast<DuidType>(HostSwap16(mDuidType)); }
+    DuidType GetDuidType(void) const { return static_cast<DuidType>(BigEndian::HostSwap16(mDuidType)); }
 
     /**
      * Sets the server DUID Type.
      *
      * @param[in]  aDuidType  The server DUID Type.
-     *
      */
-    void SetDuidType(DuidType aDuidType) { mDuidType = HostSwap16(static_cast<uint16_t>(aDuidType)); }
+    void SetDuidType(DuidType aDuidType) { mDuidType = BigEndian::HostSwap16(static_cast<uint16_t>(aDuidType)); }
 
     /**
      * Returns the server DUID HardwareType.
      *
      * @returns The server DUID HardwareType.
-     *
      */
-    uint16_t GetDuidHardwareType(void) const { return HostSwap16(mDuidHardwareType); }
+    uint16_t GetDuidHardwareType(void) const { return BigEndian::HostSwap16(mDuidHardwareType); }
 
     /**
      * Sets the server DUID HardwareType.
      *
      * @param[in]  aDuidHardwareType  The server DUID HardwareType.
-     *
      */
-    void SetDuidHardwareType(uint16_t aDuidHardwareType) { mDuidHardwareType = HostSwap16(aDuidHardwareType); }
+    void SetDuidHardwareType(uint16_t aDuidHardwareType)
+    {
+        mDuidHardwareType = BigEndian::HostSwap16(aDuidHardwareType);
+    }
 
     /**
      * Returns the server LinkLayerAddress.
      *
      * @returns The link-layer address.
-     *
      */
     const Mac::ExtAddress &GetDuidLinkLayerAddress(void) const { return mDuidLinkLayerAddress; }
 
@@ -388,7 +361,6 @@ public:
      * Sets the server LinkLayerAddress.
      *
      * @param[in]  aDuidLinkLayerAddress  The server LinkLayerAddress.
-     *
      */
     void SetDuidLinkLayerAddress(const Mac::ExtAddress &aDuidLinkLayerAddress)
     {
@@ -403,7 +375,6 @@ private:
 
 /**
  * Represents an Identity Association for Non-temporary Address DHCPv6 option.
- *
  */
 OT_TOOL_PACKED_BEGIN
 class IaNa : public Option
@@ -414,7 +385,6 @@ public:
 
     /**
      * Initializes the DHCPv6 Option.
-     *
      */
     void Init(void)
     {
@@ -426,49 +396,43 @@ public:
      * Returns client IAID.
      *
      * @returns The client IAID.
-     *
      */
-    uint32_t GetIaid(void) const { return HostSwap32(mIaid); }
+    uint32_t GetIaid(void) const { return BigEndian::HostSwap32(mIaid); }
 
     /**
      * Sets the client IAID.
      *
      * @param[in]  aIaid  The client IAID.
-     *
      */
-    void SetIaid(uint32_t aIaid) { mIaid = HostSwap32(aIaid); }
+    void SetIaid(uint32_t aIaid) { mIaid = BigEndian::HostSwap32(aIaid); }
 
     /**
      * Returns T1.
      *
      * @returns The value of T1.
-     *
      */
-    uint32_t GetT1(void) const { return HostSwap32(mT1); }
+    uint32_t GetT1(void) const { return BigEndian::HostSwap32(mT1); }
 
     /**
      * Sets the value of T1.
      *
      * @param[in]  aT1  The value of T1.
-     *
      */
-    void SetT1(uint32_t aT1) { mT1 = HostSwap32(aT1); }
+    void SetT1(uint32_t aT1) { mT1 = BigEndian::HostSwap32(aT1); }
 
     /**
      * Returns T2.
      *
      * @returns The value of T2.
-     *
      */
-    uint32_t GetT2(void) const { return HostSwap32(mT2); }
+    uint32_t GetT2(void) const { return BigEndian::HostSwap32(mT2); }
 
     /**
      * Sets the value of T2.
      *
      * @param[in]  aT2  The value of T2.
-     *
      */
-    void SetT2(uint32_t aT2) { mT2 = HostSwap32(aT2); }
+    void SetT2(uint32_t aT2) { mT2 = BigEndian::HostSwap32(aT2); }
 
 private:
     uint32_t mIaid;
@@ -478,7 +442,6 @@ private:
 
 /**
  * Represents an Identity Association Address DHCPv6 option.
- *
  */
 OT_TOOL_PACKED_BEGIN
 class IaAddress : public Option
@@ -489,7 +452,6 @@ public:
 
     /**
      * Initializes the DHCPv6 Option.
-     *
      */
     void Init(void)
     {
@@ -501,7 +463,6 @@ public:
      * Returns a reference to the IPv6 address.
      *
      * @returns A reference to the IPv6 address.
-     *
      */
     Ip6::Address &GetAddress(void) { return mAddress; }
 
@@ -509,7 +470,6 @@ public:
      * Returns a reference to the IPv6 address.
      *
      * @returns A reference to the IPv6 address.
-     *
      */
     const Ip6::Address &GetAddress(void) const { return mAddress; }
 
@@ -517,7 +477,6 @@ public:
      * Sets the IPv6 address.
      *
      * @param[in]  aAddress  The reference to the IPv6 address to set.
-     *
      */
     void SetAddress(const Ip6::Address &aAddress) { mAddress = aAddress; }
 
@@ -525,33 +484,32 @@ public:
      * Returns the preferred lifetime of the IPv6 address.
      *
      * @returns The preferred lifetime of the IPv6 address.
-     *
      */
-    uint32_t GetPreferredLifetime(void) const { return HostSwap32(mPreferredLifetime); }
+    uint32_t GetPreferredLifetime(void) const { return BigEndian::HostSwap32(mPreferredLifetime); }
 
     /**
      * Sets the preferred lifetime of the IPv6 address.
      *
      * @param[in]  aPreferredLifetime  The preferred lifetime of the IPv6 address.
-     *
      */
-    void SetPreferredLifetime(uint32_t aPreferredLifetime) { mPreferredLifetime = HostSwap32(aPreferredLifetime); }
+    void SetPreferredLifetime(uint32_t aPreferredLifetime)
+    {
+        mPreferredLifetime = BigEndian::HostSwap32(aPreferredLifetime);
+    }
 
     /**
      * Returns the valid lifetime of the IPv6 address.
      *
      * @returns The valid lifetime of the IPv6 address.
-     *
      */
-    uint32_t GetValidLifetime(void) const { return HostSwap32(mValidLifetime); }
+    uint32_t GetValidLifetime(void) const { return BigEndian::HostSwap32(mValidLifetime); }
 
     /**
      * Sets the valid lifetime of the IPv6 address.
      *
      * @param[in]  aValidLifetime  The valid lifetime of the IPv6 address.
-     *
      */
-    void SetValidLifetime(uint32_t aValidLifetime) { mValidLifetime = HostSwap32(aValidLifetime); }
+    void SetValidLifetime(uint32_t aValidLifetime) { mValidLifetime = BigEndian::HostSwap32(aValidLifetime); }
 
 private:
     Ip6::Address mAddress;
@@ -561,7 +519,6 @@ private:
 
 /**
  * Represents an Elapsed Time DHCPv6 option.
- *
  */
 OT_TOOL_PACKED_BEGIN
 class ElapsedTime : public Option
@@ -569,7 +526,6 @@ class ElapsedTime : public Option
 public:
     /**
      * Initializes the DHCPv6 Option.
-     *
      */
     void Init(void)
     {
@@ -581,17 +537,15 @@ public:
      * Returns the elapsed time since solicit starts.
      *
      * @returns The elapsed time since solicit starts.
-     *
      */
-    uint16_t GetElapsedTime(void) const { return HostSwap16(mElapsedTime); }
+    uint16_t GetElapsedTime(void) const { return BigEndian::HostSwap16(mElapsedTime); }
 
     /**
      * Sets the elapsed time since solicit starts.
      *
      * @param[in] aElapsedTime The elapsed time since solicit starts.
-     *
      */
-    void SetElapsedTime(uint16_t aElapsedTime) { mElapsedTime = HostSwap16(aElapsedTime); }
+    void SetElapsedTime(uint16_t aElapsedTime) { mElapsedTime = BigEndian::HostSwap16(aElapsedTime); }
 
 private:
     uint16_t mElapsedTime;
@@ -599,7 +553,6 @@ private:
 
 /**
  * Status Code.
- *
  */
 enum Status : uint16_t
 {
@@ -617,7 +570,6 @@ enum Status : uint16_t
 
 /**
  * Represents an Status Code DHCPv6 option.
- *
  */
 OT_TOOL_PACKED_BEGIN
 class StatusCode : public Option
@@ -625,7 +577,6 @@ class StatusCode : public Option
 public:
     /**
      * Initializes the DHCPv6 Option.
-     *
      */
     void Init(void)
     {
@@ -637,17 +588,15 @@ public:
      * Returns the status code.
      *
      * @returns The status code.
-     *
      */
-    Status GetStatusCode(void) const { return static_cast<Status>(HostSwap16(mStatus)); }
+    Status GetStatusCode(void) const { return static_cast<Status>(BigEndian::HostSwap16(mStatus)); }
 
     /**
      * Sets the status code.
      *
      * @param[in] aStatus The status code.
-     *
      */
-    void SetStatusCode(Status aStatus) { mStatus = HostSwap16(static_cast<uint16_t>(aStatus)); }
+    void SetStatusCode(Status aStatus) { mStatus = BigEndian::HostSwap16(static_cast<uint16_t>(aStatus)); }
 
 private:
     uint16_t mStatus;
@@ -655,7 +604,6 @@ private:
 
 /**
  * Represents an Rapid Commit DHCPv6 option.
- *
  */
 OT_TOOL_PACKED_BEGIN
 class RapidCommit : public Option
@@ -663,7 +611,6 @@ class RapidCommit : public Option
 public:
     /**
      * Initializes the DHCPv6 Option.
-     *
      */
     void Init(void)
     {

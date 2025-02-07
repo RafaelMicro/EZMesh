@@ -40,6 +40,7 @@
 #include "openthread/link.h"
 #include "openthread/thread_ftd.h"
 
+#include "common/types.hpp"
 #include "rest/types.hpp"
 #include "utils/hex.hpp"
 
@@ -49,7 +50,6 @@ namespace rest {
 /**
  * The functions within this namespace provides a tranformation from an object/string/number to a serialized Json
  * string.
- *
  */
 namespace Json {
 
@@ -59,7 +59,6 @@ namespace Json {
  * @param[in] aNumber  An integer need to be format.
  *
  * @returns A string of serialized Json number.
- *
  */
 std::string Number2JsonString(const uint32_t &aNumber);
 
@@ -69,7 +68,6 @@ std::string Number2JsonString(const uint32_t &aNumber);
  * @param[in] aBytes  A Bytes array representing a hex number.
  *
  * @returns A string of serialized Json string.
- *
  */
 std::string Bytes2HexJsonString(const uint8_t *aBytes, uint8_t aLength);
 
@@ -81,7 +79,6 @@ std::string Bytes2HexJsonString(const uint8_t *aBytes, uint8_t aLength);
  * @param[in] aMaxLength Maximum length to parse (in bytes).
  *
  * @returns Number of bytes effectively parsed.
- *
  */
 int Hex2BytesJsonString(const std::string &aHexString, uint8_t *aBytes, uint8_t aMaxLength);
 
@@ -91,7 +88,6 @@ int Hex2BytesJsonString(const std::string &aHexString, uint8_t *aBytes, uint8_t 
  * @param[in] aCString  A char pointer pointing to a C string.
  *
  * @returns A string of serialized Json string.
- *
  */
 std::string CString2JsonString(const char *aCString);
 
@@ -101,7 +97,6 @@ std::string CString2JsonString(const char *aCString);
  * @param[in] aString  A string.
  *
  * @returns A string of serialized Json string.
- *
  */
 std::string String2JsonString(const std::string &aString);
 
@@ -121,7 +116,6 @@ bool JsonString2String(const std::string &aJsonString, std::string &aString);
  * @param[in] aNode  A Node object.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string Node2JsonString(const NodeInfo &aNode);
 
@@ -131,7 +125,6 @@ std::string Node2JsonString(const NodeInfo &aNode);
  * @param[in] aDiagSet  A vector of diagnostic objects.
  *
  * @returns A string of serialized Json array.
- *
  */
 std::string Diag2JsonString(const std::vector<std::vector<otNetworkDiagTlv>> &aDiagSet);
 
@@ -141,7 +134,6 @@ std::string Diag2JsonString(const std::vector<std::vector<otNetworkDiagTlv>> &aD
  * @param[in] aAddress  An Ip6Address object.
  *
  * @returns A string of serialized Json string.
- *
  */
 std::string IpAddr2JsonString(const otIp6Address &aAddress);
 
@@ -151,7 +143,6 @@ std::string IpAddr2JsonString(const otIp6Address &aAddress);
  * @param[in] aMode  A LinkModeConfig object.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string Mode2JsonString(const otLinkModeConfig &aMode);
 
@@ -161,7 +152,6 @@ std::string Mode2JsonString(const otLinkModeConfig &aMode);
  * @param[in] aConnectivity  A Connectivity object.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string Connectivity2JsonString(const otNetworkDiagConnectivity &aConnectivity);
 
@@ -171,7 +161,6 @@ std::string Connectivity2JsonString(const otNetworkDiagConnectivity &aConnectivi
  * @param[in] aRoute  A Route object.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string Route2JsonString(const otNetworkDiagRoute &aRoute);
 
@@ -181,7 +170,6 @@ std::string Route2JsonString(const otNetworkDiagRoute &aRoute);
  * @param[in] aRouteData  A RouteData object.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string RouteData2JsonString(const otNetworkDiagRouteData &aRouteData);
 
@@ -191,7 +179,6 @@ std::string RouteData2JsonString(const otNetworkDiagRouteData &aRouteData);
  * @param[in] aLeaderData  A LeaderData object.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string LeaderData2JsonString(const otLeaderData &aLeaderData);
 
@@ -201,7 +188,6 @@ std::string LeaderData2JsonString(const otLeaderData &aLeaderData);
  * @param[in] aMacCounters  A MacCounters object.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string MacCounters2JsonString(const otNetworkDiagMacCounters &aMacCounters);
 
@@ -211,7 +197,6 @@ std::string MacCounters2JsonString(const otNetworkDiagMacCounters &aMacCounters)
  * @param[in] aChildEntry  A ChildEntry object.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string ChildTableEntry2JsonString(const otNetworkDiagChildEntry &aChildEntry);
 
@@ -222,7 +207,6 @@ std::string ChildTableEntry2JsonString(const otNetworkDiagChildEntry &aChildEntr
  * @param[in] aErrorMessage  Error message such as '404 Not Found'.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string Error2JsonString(HttpStatusCode aErrorCode, std::string aErrorMessage);
 
@@ -232,7 +216,6 @@ std::string Error2JsonString(HttpStatusCode aErrorCode, std::string aErrorMessag
  * @param[in] aDataset  A dataset struct.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string ActiveDataset2JsonString(const otOperationalDataset &aDataset);
 
@@ -242,7 +225,6 @@ std::string ActiveDataset2JsonString(const otOperationalDataset &aDataset);
  * @param[in] aDataset  A dataset struct.
  *
  * @returns A string of serialized Json object.
- *
  */
 std::string PendingDataset2JsonString(const otOperationalDataset &aPendingDataset);
 
@@ -255,7 +237,6 @@ std::string PendingDataset2JsonString(const otOperationalDataset &aPendingDatase
  * @param[in] aDataset            The dataset struct to be filled.
  *
  * @returns If the Json string has been successfully parsed.
- *
  */
 bool JsonActiveDatasetString2Dataset(const std::string &aJsonActiveDataset, otOperationalDataset &aDataset);
 
@@ -268,9 +249,16 @@ bool JsonActiveDatasetString2Dataset(const std::string &aJsonActiveDataset, otOp
  * @param[in] aDataset            The dataset struct to be filled.
  *
  * @returns If the Json string has been successfully parsed.
- *
  */
 bool JsonPendingDatasetString2Dataset(const std::string &aJsonPendingDataset, otOperationalDataset &aDataset);
+
+std::string JoinerInfo2JsonString(const otJoinerInfo &aJoinerInfo);
+
+otbrError StringDiscerner2Discerner(char *aString, otJoinerDiscerner &aDiscerner);
+
+bool JsonJoinerInfoString2JoinerInfo(const std::string &aJsonJoinerInfo, otJoinerInfo &aJoinerInfo);
+
+std::string JoinerTable2JsonString(const std::vector<otJoinerInfo> &aJoinerTable);
 
 }; // namespace Json
 

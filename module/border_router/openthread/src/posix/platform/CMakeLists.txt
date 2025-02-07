@@ -45,6 +45,13 @@ if(OT_DAEMON)
     set(OT_PLATFORM_DEFINES ${OT_PLATFORM_DEFINES} PARENT_SCOPE)
 endif()
 
+if(OT_MULTIPAN_RCP)
+    target_compile_definitions(ot-posix-config
+        INTERFACE "OPENTHREAD_CONFIG_MULTIPAN_RCP_ENABLE=1"
+    )
+endif()
+
+
 option(OT_POSIX_INSTALL_EXTERNAL_ROUTES "Install External Routes as IPv6 routes" ON)
 if(OT_POSIX_INSTALL_EXTERNAL_ROUTES)
     target_compile_definitions(ot-posix-config
@@ -77,10 +84,24 @@ if (OT_POSIX_SECURE_SETTINGS)
     )
 endif()
 
-set(OT_POSIX_CONFIG_RCP_BUS "" CACHE STRING "RCP bus type")
-if(OT_POSIX_CONFIG_RCP_BUS)
+option(OT_POSIX_RCP_HDLC_BUS "enable RCP HDLC bus" OFF)
+if(OT_POSIX_RCP_HDLC_BUS)
     target_compile_definitions(ot-posix-config
-        INTERFACE "OPENTHREAD_POSIX_CONFIG_RCP_BUS=OT_POSIX_RCP_BUS_${OT_POSIX_CONFIG_RCP_BUS}"
+        INTERFACE "OPENTHREAD_POSIX_CONFIG_SPINEL_HDLC_INTERFACE_ENABLE=1"
+    )
+endif()
+
+option(OT_POSIX_RCP_SPI_BUS "enable RCP SPI bus" OFF)
+if(OT_POSIX_RCP_SPI_BUS)
+    target_compile_definitions(ot-posix-config
+        INTERFACE "OPENTHREAD_POSIX_CONFIG_SPINEL_SPI_INTERFACE_ENABLE=1"
+    )
+endif()
+
+option(OT_POSIX_RCP_VENDOR_BUS "enable RCP vendor bus" OFF)
+if(OT_POSIX_RCP_VENDOR_BUS)
+    target_compile_definitions(ot-posix-config
+        INTERFACE "OPENTHREAD_POSIX_CONFIG_SPINEL_VENDOR_INTERFACE_ENABLE=1"
     )
 endif()
 
@@ -103,29 +124,34 @@ endif()
 
 add_library(openthread-posix
     alarm.cpp
-    backbone.cpp
     backtrace.cpp
+    ble.cpp
+    configuration.cpp
     config_file.cpp
-    ezmesh_interface.cpp
     daemon.cpp
     entropy.cpp
     firewall.cpp
     hdlc_interface.cpp
+    ezmesh_interface.cpp
     infra_if.cpp
     logging.cpp
     mainloop.cpp
+    mdns_socket.cpp
     memory.cpp
     misc.cpp
     multicast_routing.cpp
     netif.cpp
     power.cpp
-    power_updater.cpp
     radio.cpp
     radio_url.cpp
+    rcp_caps_diag.cpp
     resolver.cpp
     settings.cpp
+    settings_file.cpp
+    spinel_manager.cpp
     spi_interface.cpp
     system.cpp
+    tmp_storage.cpp
     trel.cpp
     udp.cpp
     utils.cpp
@@ -143,6 +169,7 @@ target_link_libraries(openthread-posix
         openthread-cli-ftd
         openthread-ftd
         openthread-hdlc
+        openthread-radio-spinel
         openthread-spinel-rcp
         openthread-url
         ot-config-ftd
@@ -166,53 +193,33 @@ target_compile_definitions(openthread-posix
     PRIVATE
         OPENTHREAD_FTD=1
         OPENTHREAD_MTD=0
+        OPENTHREAD_RADIO=0
 )
 
 target_compile_options(openthread-posix PRIVATE
     ${OT_CFLAGS}
 )
 
+
+get_target_property(EZMESHD_SOURCE_DIR ezmesh SOURCE_DIR)
+target_include_directories(openthread-posix PRIVATE ${EZMESHD_SOURCE_DIR}/lib)
+# target_sources(openthread-posix PRIVATE ezmesh_interface.cpp)
+target_link_libraries(openthread-posix PRIVATE ezmesh)
+
+
 target_include_directories(openthread-posix PRIVATE
     ${OT_PUBLIC_INCLUDES}
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/core
     ${PROJECT_SOURCE_DIR}/third_party/mbedtls/repo/include
+    ${OT_SPINEL_VENDOR_HOOK_SOURCE_DIR}
     PUBLIC
         ${PROJECT_SOURCE_DIR}/src/posix/platform/include
 )
 
-if(OT_POSIX_CONFIG_RCP_BUS MATCHES "EZMESH")
-    if (NOT TARGET ezmesh)
-        message(WARNING "EZMESH target is not available.")
-        if (NOT EZMESHD_SOURCE_DIR)
-            message(FATAL_ERROR "Could not locate EZMESH daemon sources.\n"
-                                "Please define the CMake variable 'EZMESHD_SOURCE_DIR'.\n"
-                                "'EZMESHD_SOURCE_DIR' is an absolute path to the EZMESH Daemon sources")
-        endif()
-
-        if (NOT IS_ABSOLUTE ${EZMESHD_SOURCE_DIR})
-            message(FATAL_ERROR "'EZMESHD_SOURCE_DIR' must be an absolute path.\nEZMESHD_SOURCE_DIR=\"${EZMESHD_SOURCE_DIR}\"")
-        else()
-            message(WARNING "Building ezmesh library from source...\n"
-                            "    EZMESHD_SOURCE_DIR = ${EZMESHD_SOURCE_DIR}")
-        endif()
-
-        # Add ezmeshd to the build tree
-        add_subdirectory(${EZMESHD_SOURCE_DIR} ${EZMESHD_SOURCE_DIR}/build)
-        target_include_directories(openthread-posix PRIVATE
-            ${EZMESHD_SOURCE_DIR}/lib
-        )
-    endif()
-
-    get_target_property(EZMESHD_SOURCE_DIR ezmesh SOURCE_DIR)
-    target_include_directories(openthread-posix PRIVATE ${EZMESHD_SOURCE_DIR}/lib)
-    target_sources(openthread-posix PRIVATE ezmesh_interface.cpp)
-    target_link_libraries(openthread-posix PRIVATE ezmesh)
-
-endif()
-
 add_executable(ot-posix-test-settings
     settings.cpp
+    settings_file.cpp
 )
 target_compile_definitions(ot-posix-test-settings
     PRIVATE -DSELF_TEST=1 -DOPENTHREAD_CONFIG_LOG_PLATFORM=0
@@ -222,6 +229,7 @@ target_include_directories(ot-posix-test-settings
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_SOURCE_DIR}/src/core
+        ${PROJECT_SOURCE_DIR}/src/include
         ${PROJECT_SOURCE_DIR}/src/posix/platform/include
 )
 add_test(NAME ot-posix-test-settings COMMAND ot-posix-test-settings)

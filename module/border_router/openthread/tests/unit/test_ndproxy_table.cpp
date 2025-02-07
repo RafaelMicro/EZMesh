@@ -38,7 +38,7 @@
 #include "test_util.h"
 #include "backbone_router/ndproxy_table.hpp"
 #include "common/code_utils.hpp"
-#include "common/instance.hpp"
+#include "instance/instance.hpp"
 
 namespace ot {
 
@@ -111,5 +111,8 @@ int main(void)
 }
 
 #else
-int main(void) { return 0; }
+int main(void)
+{
+    return 0;
+}
 #endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE

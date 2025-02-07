@@ -42,6 +42,7 @@ ARG RELEASE
 ARG REST_API
 ARG WEB_GUI
 ARG MDNS
+ARG FIREWALL
 
 ENV INFRA_IF_NAME=${INFRA_IF_NAME:-eth0}
 ENV BORDER_ROUTING=${BORDER_ROUTING:-1}
@@ -59,6 +60,7 @@ ENV NAT64_DYNAMIC_POOL=${NAT64_DYNAMIC_POOL:-192.168.255.0/24}
 ENV DNS64=${DNS64:-0}
 ENV WEB_GUI=${WEB_GUI:-1}
 ENV REST_API=${REST_API:-1}
+ENV FIREWALL=${FIREWALL:-1}
 ENV DOCKER 1
 
 RUN env
@@ -71,16 +73,12 @@ ENV OTBR_DOCKER_DEPS git ca-certificates
 
 # Required and installed during build (script/bootstrap), could be removed
 ENV OTBR_BUILD_DEPS apt-utils build-essential psmisc ninja-build cmake wget ca-certificates \
-  libreadline-dev libncurses-dev libcpputest-dev libdbus-1-dev libavahi-common-dev \
+  libreadline-dev libncurses-dev libdbus-1-dev libavahi-common-dev \
   libavahi-client-dev libboost-dev libboost-filesystem-dev libboost-system-dev \
   libnetfilter-queue-dev
 
 # Required for OpenThread Backbone CI
-ENV OTBR_OT_BACKBONE_CI_DEPS curl lcov wget build-essential python3-dbus python3-zeroconf
-
-# Required and installed during build (script/bootstrap) when RELEASE=1, could be removed
-ENV OTBR_NORELEASE_DEPS \
-  cpputest-dev
+ENV OTBR_OT_BACKBONE_CI_DEPS curl lcov wget build-essential python3-dbus python3-zeroconf socat
 
 RUN apt-get update \
   && apt-get install --no-install-recommends -y $OTBR_DOCKER_REQS $OTBR_DOCKER_DEPS \
@@ -88,6 +86,7 @@ RUN apt-get update \
   && ln -fs /usr/share/zoneinfo/UTC /etc/localtime
 
 COPY ./script /app/script
+COPY ./third_party/mDNSResponder /app/third_party/mDNSResponder
 WORKDIR /app
 
 RUN ./script/bootstrap
@@ -104,8 +103,8 @@ RUN ([ "${DNS64}" = "0" ] || chmod 644 /etc/bind/named.conf.options) \
     && mv /tmp/etc . \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $OTBR_DOCKER_DEPS \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $OTBR_BUILD_DEPS  \
-    && ([ "${RELEASE}" = 1 ] ||  apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false "$OTBR_NORELEASE_DEPS";) \
     && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* \
   ))
 
 ENTRYPOINT ["/app/etc/docker/docker_entrypoint.sh"]

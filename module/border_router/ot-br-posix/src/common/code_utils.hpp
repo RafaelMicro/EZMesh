@@ -52,11 +52,14 @@
  *  @param[in] aAlignType  The type to align with and convert the pointer to this type.
  *
  *  @returns A pointer to aligned memory.
- *
  */
 #define OTBR_ALIGNED(aMem, aAlignType) \
     reinterpret_cast<aAlignType>(      \
         ((reinterpret_cast<unsigned long>(aMem) + sizeof(aAlignType) - 1) / sizeof(aAlignType)) * sizeof(aAlignType))
+
+// Allocate the structure using "raw" storage.
+#define OT_DEFINE_ALIGNED_VAR(name, size, align_type) \
+    align_type name[(((size) + (sizeof(align_type) - 1)) / sizeof(align_type))]
 
 #ifndef CONTAINING_RECORD
 #define BASE 0x1
@@ -70,7 +73,6 @@
  *  the status is unsuccessful.
  *
  *  @param[in] aStatus  A scalar status to be evaluated against zero (0).
- *
  */
 #define SuccessOrExit(aStatus, ...) \
     do                              \
@@ -88,7 +90,6 @@
  *
  * @param[in] aStatus   A scalar error status to be evaluated against zero (0).
  * @param[in] aMessage  A message (text string) to print on failure.
- *
  */
 #define SuccessOrDie(aStatus, aMessage)                                                   \
     do                                                                                    \
@@ -108,7 +109,6 @@
  *  @param[in] aCondition  A Boolean expression to be evaluated.
  *  @param[in] ...         An expression or block to execute when the
  *                         assertion fails.
- *
  */
 #define VerifyOrExit(aCondition, ...) \
     do                                \
@@ -126,7 +126,6 @@
  *
  * @param[in] aCondition  The condition to verify
  * @param[in] aMessage    A message (text string) to print on failure.
- *
  */
 #define VerifyOrDie(aCondition, aMessage)                                    \
     do                                                                       \
@@ -139,6 +138,18 @@
     } while (false)
 
 /**
+ * This macro prints the message and terminates the program.
+ *
+ * @param[in] aMessage    A message (text string) to print.
+ */
+#define DieNow(aMessage)                                                 \
+    do                                                                   \
+    {                                                                    \
+        otbrLogEmerg("FAILED %s:%d - %s", __FILE__, __LINE__, aMessage); \
+        exit(-1);                                                        \
+    } while (false)
+
+/**
  *  This unconditionally executes @a ... and branches to the local
  *  label 'exit'.
  *
@@ -148,7 +159,6 @@
  *
  *  @param[in] ...  An optional expression or block to execute
  *                  when the assertion fails.
- *
  */
 #define ExitNow(...) \
     do               \
@@ -166,8 +176,15 @@ template <typename T, typename... Args> std::unique_ptr<T> MakeUnique(Args &&...
 }
 
 /**
- * This class makes any class that derives from it non-copyable. It is intended to be used as a private base class.
+ * This method converts 8 uint8_t bytes into uint64_t using big-endian.
  *
+ * @param[in] aValue  The input 8 uint8_t bytes.
+ * @returns The converted uint64_t.
+ */
+uint64_t ConvertOpenThreadUint64(const uint8_t *aValue);
+
+/**
+ * This class makes any class that derives from it non-copyable. It is intended to be used as a private base class.
  */
 class NonCopyable
 {

@@ -42,7 +42,7 @@
 #include <openthread/border_router.h>
 
 #include "common/api_strings.hpp"
-#include "ncp/ncp_openthread.hpp"
+#include "host/rcp_host.hpp"
 #include "openthread/dataset.h"
 #include "openthread/dataset_ftd.h"
 #include "rest/json.hpp"
@@ -50,7 +50,7 @@
 #include "rest/response.hpp"
 #include "utils/thread_helper.hpp"
 
-using otbr::Ncp::ControllerOpenThread;
+using otbr::Host::RcpHost;
 using std::chrono::steady_clock;
 
 namespace otbr {
@@ -58,7 +58,6 @@ namespace rest {
 
 /**
  * This class implements the Resource handler for OTBR-REST.
- *
  */
 class Resource
 {
@@ -66,15 +65,12 @@ public:
     /**
      * The constructor initializes the resource handler instance.
      *
-     * @param[in] aNcp  A pointer to the NCP controller.
-     *
+     * @param[in] aHost  A pointer to the Thread controller.
      */
-    Resource(ControllerOpenThread *aNcp);
+    Resource(RcpHost *aHost);
 
     /**
      * This method initialize the Resource handler.
-     *
-     *
      */
     void Init(void);
 
@@ -84,7 +80,6 @@ public:
      *
      * @param[in]     aRequest  A request instance referred by the Resource handler.
      * @param[in,out] aResponse  A response instance will be set by the Resource handler.
-     *
      */
     void Handle(Request &aRequest, Response &aResponse) const;
 
@@ -93,7 +88,6 @@ public:
      *
      * @param[in]     aRequest   A request instance referred by the Resource handler.
      * @param[in,out] aResponse  A response instance will be set by the Resource handler.
-     *
      */
     void HandleCallback(Request &aRequest, Response &aResponse);
 
@@ -103,14 +97,12 @@ public:
      *
      * @param[in]     aRequest    A request instance referred by the Resource handler.
      * @param[in,out] aErrorCode  An enum class represents the status code.
-     *
      */
     void ErrorHandler(Response &aResponse, HttpStatusCode aErrorCode) const;
 
 private:
     /**
      * This enumeration represents the Dataset type (active or pending).
-     *
      */
     enum class DatasetType : uint8_t
     {
@@ -133,10 +125,14 @@ private:
     void Dataset(DatasetType aDatasetType, const Request &aRequest, Response &aResponse) const;
     void DatasetActive(const Request &aRequest, Response &aResponse) const;
     void DatasetPending(const Request &aRequest, Response &aResponse) const;
+    void CommissionerState(const Request &aRequest, Response &aResponse) const;
+    void CommissionerJoiner(const Request &aRequest, Response &aResponse) const;
     void Diagnostic(const Request &aRequest, Response &aResponse) const;
     void HandleDiagnosticCallback(const Request &aRequest, Response &aResponse);
+    void CoprocessorVersion(const Request &aRequest, Response &aResponse) const;
 
     void GetNodeInfo(Response &aResponse) const;
+    void DeleteNodeInfo(Response &aResponse) const;
     void GetDataBaId(Response &aResponse) const;
     void GetDataExtendedAddr(Response &aResponse) const;
     void GetDataState(Response &aResponse) const;
@@ -149,6 +145,12 @@ private:
     void GetDataRloc(Response &aResponse) const;
     void GetDataset(DatasetType aDatasetType, const Request &aRequest, Response &aResponse) const;
     void SetDataset(DatasetType aDatasetType, const Request &aRequest, Response &aResponse) const;
+    void GetCommissionerState(Response &aResponse) const;
+    void SetCommissionerState(const Request &aRequest, Response &aResponse) const;
+    void GetJoiners(Response &aResponse) const;
+    void AddJoiner(const Request &aRequest, Response &aResponse) const;
+    void RemoveJoiner(const Request &aRequest, Response &aResponse) const;
+    void GetCoprocessorVersion(Response &aResponse) const;
 
     void DeleteOutDatedDiagnostic(void);
     void UpdateDiag(std::string aKey, std::vector<otNetworkDiagTlv> &aDiag);
@@ -159,8 +161,8 @@ private:
                                           void                *aContext);
     void        DiagnosticResponseHandler(otError aError, const otMessage *aMessage, const otMessageInfo *aMessageInfo);
 
-    otInstance           *mInstance;
-    ControllerOpenThread *mNcp;
+    otInstance *mInstance;
+    RcpHost    *mHost;
 
     std::unordered_map<std::string, ResourceHandler>         mResourceMap;
     std::unordered_map<std::string, ResourceCallbackHandler> mResourceCallbackMap;

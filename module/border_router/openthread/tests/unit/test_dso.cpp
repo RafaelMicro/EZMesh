@@ -34,7 +34,7 @@
 #include "common/arg_macros.hpp"
 #include "common/array.hpp"
 #include "common/as_core_type.hpp"
-#include "common/instance.hpp"
+#include "instance/instance.hpp"
 #include "common/time.hpp"
 #include "net/dns_dso.hpp"
 

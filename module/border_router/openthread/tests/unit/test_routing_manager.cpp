@@ -38,8 +38,8 @@
 #include "border_router/routing_manager.hpp"
 #include "common/arg_macros.hpp"
 #include "common/array.hpp"
-#include "common/instance.hpp"
 #include "common/time.hpp"
+#include "instance/instance.hpp"
 #include "net/icmp6.hpp"
 #include "net/nd6.hpp"
 
@@ -233,7 +233,10 @@ void otPlatLog(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aFormat
 
 extern "C" {
 
-otRadioCaps otPlatRadioGetCaps(otInstance *) { return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF; }
+otRadioCaps otPlatRadioGetCaps(otInstance *)
+{
+    return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF;
+}
 
 otError otPlatRadioTransmit(otInstance *, otRadioFrame *)
 {
@@ -242,12 +245,18 @@ otError otPlatRadioTransmit(otInstance *, otRadioFrame *)
     return OT_ERROR_NONE;
 }
 
-otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *) { return &sRadioTxFrame; }
+otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *)
+{
+    return &sRadioTxFrame;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // `otPlatAlaram
 
-void otPlatAlarmMilliStop(otInstance *) { sAlarmOn = false; }
+void otPlatAlarmMilliStop(otInstance *)
+{
+    sAlarmOn = false;
+}
 
 void otPlatAlarmMilliStartAt(otInstance *, uint32_t aT0, uint32_t aDt)
 {
@@ -255,7 +264,10 @@ void otPlatAlarmMilliStartAt(otInstance *, uint32_t aT0, uint32_t aDt)
     sAlarmTime = aT0 + aDt;
 }
 
-uint32_t otPlatAlarmMilliGetNow(void) { return sNow; }
+uint32_t otPlatAlarmMilliGetNow(void)
+{
+    return sNow;
+}
 
 //---------------------------------------------------------------------------------------------------------------------
 // otPlatInfraIf
@@ -934,7 +946,10 @@ void VerifyPrefixTable(const OnLinkPrefix *aOnLinkPrefixes,
     VerifyOrQuit(routePrefixCount == aNumRoutePrefixes);
 }
 
-void VerifyPrefixTableIsEmpty(void) { VerifyPrefixTable(nullptr, 0, nullptr, 0); }
+void VerifyPrefixTableIsEmpty(void)
+{
+    VerifyPrefixTable(nullptr, 0, nullptr, 0);
+}
 
 void InitTest(bool aEnablBorderRouting = false, bool aAfterReset = false)
 {

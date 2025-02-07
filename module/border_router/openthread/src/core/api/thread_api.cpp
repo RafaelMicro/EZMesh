@@ -35,13 +35,7 @@
 
 #if OPENTHREAD_FTD || OPENTHREAD_MTD
 
-#include <openthread/thread.h>
-
-#include "common/as_core_type.hpp"
-#include "common/debug.hpp"
-#include "common/locator_getters.hpp"
-#include "common/uptime.hpp"
-#include "thread/version.hpp"
+#include "instance/instance.hpp"
 
 using namespace ot;
 
@@ -79,7 +73,13 @@ exit:
 
 otError otThreadGetLeaderRloc(otInstance *aInstance, otIp6Address *aLeaderRloc)
 {
-    return AsCoreType(aInstance).Get<Mle::MleRouter>().GetLeaderAddress(AsCoreType(aLeaderRloc));
+    Error error = kErrorNone;
+
+    VerifyOrExit(!AsCoreType(aInstance).Get<Mle::Mle>().HasRloc16(Mle::kInvalidRloc16), error = kErrorDetached);
+    AsCoreType(aInstance).Get<Mle::Mle>().GetLeaderRloc(AsCoreType(aLeaderRloc));
+
+exit:
+    return error;
 }
 
 otLinkModeConfig otThreadGetLinkMode(otInstance *aInstance)
@@ -145,12 +145,12 @@ exit:
 
 const otIp6Address *otThreadGetRloc(otInstance *aInstance)
 {
-    return &AsCoreType(aInstance).Get<Mle::MleRouter>().GetMeshLocal16();
+    return &AsCoreType(aInstance).Get<Mle::MleRouter>().GetMeshLocalRloc();
 }
 
 const otIp6Address *otThreadGetMeshLocalEid(otInstance *aInstance)
 {
-    return &AsCoreType(aInstance).Get<Mle::MleRouter>().GetMeshLocal64();
+    return &AsCoreType(aInstance).Get<Mle::MleRouter>().GetMeshLocalEid();
 }
 
 const otMeshLocalPrefix *otThreadGetMeshLocalPrefix(otInstance *aInstance)
@@ -189,7 +189,13 @@ const otIp6Address *otThreadGetRealmLocalAllThreadNodesMulticastAddress(otInstan
 
 otError otThreadGetServiceAloc(otInstance *aInstance, uint8_t aServiceId, otIp6Address *aServiceAloc)
 {
-    return AsCoreType(aInstance).Get<Mle::MleRouter>().GetServiceAloc(aServiceId, AsCoreType(aServiceAloc));
+    Error error = kErrorNone;
+
+    VerifyOrExit(!AsCoreType(aInstance).Get<Mle::Mle>().HasRloc16(Mle::kInvalidRloc16), error = kErrorDetached);
+    AsCoreType(aInstance).Get<Mle::Mle>().GetServiceAloc(aServiceId, AsCoreType(aServiceAloc));
+
+exit:
+    return error;
 }
 
 const char *otThreadGetNetworkName(otInstance *aInstance)
@@ -275,15 +281,16 @@ uint32_t otThreadGetKeySequenceCounter(otInstance *aInstance)
 
 void otThreadSetKeySequenceCounter(otInstance *aInstance, uint32_t aKeySequenceCounter)
 {
-    AsCoreType(aInstance).Get<KeyManager>().SetCurrentKeySequence(aKeySequenceCounter);
+    AsCoreType(aInstance).Get<KeyManager>().SetCurrentKeySequence(
+        aKeySequenceCounter, KeyManager::kForceUpdate | KeyManager::kGuardTimerUnchanged);
 }
 
-uint32_t otThreadGetKeySwitchGuardTime(otInstance *aInstance)
+uint16_t otThreadGetKeySwitchGuardTime(otInstance *aInstance)
 {
     return AsCoreType(aInstance).Get<KeyManager>().GetKeySwitchGuardTime();
 }
 
-void otThreadSetKeySwitchGuardTime(otInstance *aInstance, uint32_t aKeySwitchGuardTime)
+void otThreadSetKeySwitchGuardTime(otInstance *aInstance, uint16_t aKeySwitchGuardTime)
 {
     AsCoreType(aInstance).Get<KeyManager>().SetKeySwitchGuardTime(aKeySwitchGuardTime);
 }
@@ -395,7 +402,18 @@ otError otThreadSetEnabled(otInstance *aInstance, bool aEnabled)
 
 uint16_t otThreadGetVersion(void) { return kThreadVersion; }
 
-bool otThreadIsSingleton(otInstance *aInstance) { return AsCoreType(aInstance).Get<Mle::MleRouter>().IsSingleton(); }
+bool otThreadIsSingleton(otInstance *aInstance)
+{
+    bool isSingleton = false;
+
+#if OPENTHREAD_FTD
+    isSingleton = AsCoreType(aInstance).Get<Mle::MleRouter>().IsSingleton();
+#else
+    OT_UNUSED_VARIABLE(aInstance);
+#endif
+
+    return isSingleton;
+}
 
 otError otThreadDiscover(otInstance              *aInstance,
                          uint32_t                 aScanChannels,
@@ -430,12 +448,39 @@ const otIpCounters *otThreadGetIp6Counters(otInstance *aInstance)
 
 void otThreadResetIp6Counters(otInstance *aInstance) { AsCoreType(aInstance).Get<MeshForwarder>().ResetCounters(); }
 
+#if OPENTHREAD_CONFIG_TX_QUEUE_STATISTICS_ENABLE
+const uint32_t *otThreadGetTimeInQueueHistogram(otInstance *aInstance, uint16_t *aNumBins, uint32_t *aBinInterval)
+{
+    AssertPointerIsNotNull(aNumBins);
+    AssertPointerIsNotNull(aBinInterval);
+
+    return AsCoreType(aInstance).Get<MeshForwarder>().GetTimeInQueueHistogram(*aNumBins, *aBinInterval);
+}
+
+uint32_t otThreadGetMaxTimeInQueue(otInstance *aInstance)
+{
+    return AsCoreType(aInstance).Get<MeshForwarder>().GetMaxTimeInQueue();
+}
+
+void otThreadResetTimeInQueueStat(otInstance *aInstance)
+{
+    return AsCoreType(aInstance).Get<MeshForwarder>().ResetTimeInQueueStat();
+}
+#endif
+
 const otMleCounters *otThreadGetMleCounters(otInstance *aInstance)
 {
     return &AsCoreType(aInstance).Get<Mle::MleRouter>().GetCounters();
 }
 
 void otThreadResetMleCounters(otInstance *aInstance) { AsCoreType(aInstance).Get<Mle::MleRouter>().ResetCounters(); }
+
+#if OPENTHREAD_CONFIG_UPTIME_ENABLE
+uint32_t otThreadGetCurrentAttachDuration(otInstance *aInstance)
+{
+    return AsCoreType(aInstance).Get<Mle::MleRouter>().GetCurrentAttachDuration();
+}
+#endif
 
 #if OPENTHREAD_CONFIG_MLE_PARENT_RESPONSE_CALLBACK_API_ENABLE
 void otThreadRegisterParentResponseCallback(otInstance                    *aInstance,
@@ -465,6 +510,31 @@ otError otThreadDetachGracefully(otInstance *aInstance, otDetachGracefullyCallba
 {
     return AsCoreType(aInstance).Get<Mle::MleRouter>().DetachGracefully(aCallback, aContext);
 }
+
+#if OPENTHREAD_CONFIG_DYNAMIC_STORE_FRAME_AHEAD_COUNTER_ENABLE
+void otThreadSetStoreFrameCounterAhead(otInstance *aInstance, uint32_t aStoreFrameCounterAhead)
+{
+    return AsCoreType(aInstance).Get<Mle::Mle>().SetStoreFrameCounterAhead(aStoreFrameCounterAhead);
+}
+
+uint32_t otThreadGetStoreFrameCounterAhead(otInstance *aInstance)
+{
+    return AsCoreType(aInstance).Get<Mle::Mle>().GetStoreFrameCounterAhead();
+}
+#endif
+
+#if OPENTHREAD_CONFIG_WAKEUP_COORDINATOR_ENABLE
+otError otThreadWakeup(otInstance         *aInstance,
+                       const otExtAddress *aWedAddress,
+                       uint16_t            aWakeupIntervalUs,
+                       uint16_t            aWakeupDurationMs,
+                       otWakeupCallback    aCallback,
+                       void               *aCallbackContext)
+{
+    return AsCoreType(aInstance).Get<Mle::Mle>().Wakeup(AsCoreType(aWedAddress), aWakeupIntervalUs, aWakeupDurationMs,
+                                                        aCallback, aCallbackContext);
+}
+#endif
 
 #endif // OPENTHREAD_FTD || OPENTHREAD_MTD
 

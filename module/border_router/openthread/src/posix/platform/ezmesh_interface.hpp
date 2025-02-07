@@ -34,13 +34,15 @@
 #ifndef POSIX_APP_EZMESH_INTERFACE_HPP_
 #define POSIX_APP_EZMESH_INTERFACE_HPP_
 
+#include "logger.hpp"
 #include "openthread-posix-config.h"
 #include "platform-posix.h"
+#include "lib/hdlc/hdlc.hpp"
+#include "lib/spinel/multi_frame_buffer.hpp"
+#include "lib/spinel/openthread-spinel-config.h"
 #include "lib/spinel/spinel_interface.hpp"
+#if OPENTHREAD_POSIX_CONFIG_SPINEL_VENDOR_INTERFACE_ENABLE
 #include "libezmesh.h"
-
-#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_EZMESH
-
 namespace ot {
 namespace Posix {
 
@@ -48,40 +50,37 @@ namespace Posix {
  * This class defines a EZMESH interface to the Radio Co-processor (RCP)
  *
  */
-class Ezmesh
+class Ezmesh : public ot::Spinel::SpinelInterface, public Logger<Ezmesh>
 {
 public:
+    static const char kLogModuleName[]; ///< Module name used for logging.
+
     /**
-     * This constructor initializes the object.
+     * Initializes the object.
+     *
+     * @param[in] aRadioUrl  RadioUrl parsed from radio url.
+     */
+    Ezmesh(const Url::Url &aRadioUrl);
+
+    /**
+     * This destructor deinitializes the object.
+     */
+    ~Ezmesh(void);
+
+    /**
+     * Initializes the interface to the Radio Co-processor (RCP)
+     *
+     * @note This method should be called before reading and sending spinel frames to the interface.
      *
      * @param[in] aCallback         Callback on frame received
      * @param[in] aCallbackContext  Callback context
      * @param[in] aFrameBuffer      A reference to a `RxFrameBuffer` object.
      *
+     * @retval OT_ERROR_NONE       The interface is initialized successfully
+     * @retval OT_ERROR_ALREADY    The interface is already initialized.
+     * @retval OT_ERROR_FAILED     Failed to initialize the interface.
      */
-    Ezmesh(Spinel::SpinelInterface::ReceiveFrameCallback aCallback,
-                 void *                                        aCallbackContext,
-                 Spinel::SpinelInterface::RxFrameBuffer &      aFrameBuffer);
-
-    /**
-     * This destructor deinitializes the object.
-     *
-     */
-    ~Ezmesh(void);
-
-    /**
-     * This method initializes the interface to the Radio Co-processor (RCP)
-     *
-     * @note This method should be called before reading and sending spinel frames to the interface.
-     *
-     * @param[in] aRadioUrl           Used to make definition consistent with other interfaces
-     *                                such as HDLC and SPI.
-     *
-     * @retval OT_ERROR_NONE          The interface is initialized successfully
-     * @retval OT_ERROR_FAILED        The interface initialization was unsuccessful
-     * 
-     */
-    otError Init(const Url::Url &aRadioUrl);
+    otError Init(ReceiveFrameCallback aCallback, void *aCallbackContext, RxFrameBuffer &aFrameBuffer);
 
     /**
      * This method deinitializes the interface to the RCP.
@@ -134,34 +133,42 @@ public:
      * @returns   Bus speed in bits/second.
      *
      */
-    uint32_t GetBusSpeed(void) const { return mCpcBusSpeed; }
+    uint32_t GetBusSpeed(void) const { return mBaudRate; }
 
     /**
-     * This method is called when RCP failure detected and resets internal states of the interface.
+     * Hardware resets the RCP.
+     *
+     * @retval OT_ERROR_NONE            Successfully reset the RCP.
+     * @retval OT_ERROR_NOT_IMPLEMENT   The hardware reset is not implemented.
+     */
+    otError HardwareReset(void) { return OT_ERROR_NOT_IMPLEMENTED; }
+
+    /**
+     * This method is called when RCP is reset to recreate the connection with it.
+     * Intentionally empty.
      *
      */
-    void OnRcpReset(void);
-
-    /**
-      * This method is called when RCP is reset to recreate the connection with it.
-      * Intentionally empty.
-      *
-      */
     otError ResetConnection(void) { return OT_ERROR_NONE; }
 
     /**
-      * This method returns the RCP interface metrics.
-      *
-      * @returns The RCP interface metrics.
-      *
-      */
+     * This method returns the RCP interface metrics.
+     *
+     * @returns The RCP interface metrics.
+     *
+     */
     const otRcpInterfaceMetrics *GetRcpInterfaceMetrics(void) const { return &mInterfaceMetrics; }
 
     /**
-      * This method is called reinitialise the EZMESH interface if sCpcResetReq indicates that a restart
-      * is required.
-      */
+     * This method is called reinitialise the EZMESH interface if sCpcResetReq indicates that a restart
+     * is required.
+     */
     void CheckAndReInitCpc(void);
+
+    static bool IsInterfaceNameMatch(const char *aInterfaceName)
+    {
+        static const char kInterfaceName[] = "spinel+ezmesh";
+        return (strncmp(aInterfaceName, kInterfaceName, strlen(kInterfaceName)) == 0);
+    }
 
 private:
     /**
@@ -198,9 +205,23 @@ private:
     otError Write(const uint8_t *aFrame, uint16_t aLength);
 
     /**
+     * Performs HDLC decoding on received data.
+     *
+     * If a full HDLC frame is decoded while reading data, this method invokes the `HandleReceivedFrame()` (on the
+     * `aCallback` object from constructor) to pass the received frame to be processed.
+     *
+     * @param[in] aBuffer  A pointer to buffer containing data.
+     * @param[in] aLength  The length (number of bytes) in the buffer.
+     */
+    void Decode(const uint8_t *aBuffer, uint16_t aLength);
+
+    static void HandleHdlcFrame(void *aContext, otError aError);
+    void        HandleHdlcFrame(otError aError);
+
+    /**
      * This method generates and sends a reset response back to OT.
      *
-     * This method is called after the EZMESH layer catches the SPINEL reset command. This is done so that 
+     * This method is called after the EZMESH layer catches the SPINEL reset command. This is done so that
      * EZMESH can handle resets of the RCP and OT is tricked into thinking it handles resets.
      *
      */
@@ -208,22 +229,23 @@ private:
 
     enum
     {
-        kMaxFrameSize       = LIB_EZMESH_READ_MINIMUM_SIZE,
-        kMaxWaitTime        = 5000, ///< Maximum wait time in Milliseconds for socket to become writable (see `SendFrame`).
-        kMaxSleepDuration   = 100000,  ///< Sleep duration in micro seconds before restarting ezmesh connection.
+        kMaxFrameSize = LIB_EZMESH_READ_MINIMUM_SIZE,
+        kMaxWaitTime  = 5000, ///< Maximum wait time in Milliseconds for socket to become writable (see `SendFrame`).
+        kMaxSleepDuration   = 100000, ///< Sleep duration in micro seconds before restarting ezmesh connection.
         kMaxRestartAttempts = 300,
         kResetCMDSize       = 4,
-        kCpcBusSpeed        = 500000,
     };
 
-    Spinel::SpinelInterface::ReceiveFrameCallback mReceiveFrameCallback;
-    void *                                        mReceiveFrameContext;
-    Spinel::SpinelInterface::RxFrameBuffer &      mReceiveFrameBuffer;
+    ReceiveFrameCallback mReceiveFrameCallback;
+    void                *mReceiveFrameContext;
+    RxFrameBuffer       *mReceiveFrameBuffer;
 
-    int                 mSockFd;
-    ezmesh_handle_t        mHandle;
-    ezmesh_ep_t      mEndpoint;
-    uint32_t            mCpcBusSpeed;
+    int             mSockFd;
+    ezmesh_handle_t mHandle;
+    ezmesh_ep_t     mEndpoint;
+    uint32_t        mBaudRate;
+    Hdlc::Decoder   mHdlcDecoder;
+    const Url::Url &mRadioUrl;
 
     static void HandleSecondaryReset(void);
     static void SetCpcResetReq(bool state) { sCpcResetReq = state; }
@@ -232,9 +254,9 @@ private:
     // 0x72 -> STATUS_RESET_SOFTWARE
     uint8_t mResetResponse[kResetCMDSize] = {0x80, 0x06, 0x00, 0x72};
 
-    const   uint8_t     mId = EP_15_4;
-    typedef uint8_t     ezmeshError;
-    static  bool        sCpcResetReq;
+    const uint8_t   mId = EP_15_4;
+    typedef uint8_t ezmeshError;
+    static bool     sCpcResetReq;
 
     otRcpInterfaceMetrics mInterfaceMetrics;
 

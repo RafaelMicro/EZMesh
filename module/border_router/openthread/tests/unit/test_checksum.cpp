@@ -27,7 +27,7 @@
  */
 
 #include "common/encoding.hpp"
-#include "common/instance.hpp"
+#include "instance/instance.hpp"
 #include "common/message.hpp"
 #include "common/random.hpp"
 #include "net/checksum.hpp"

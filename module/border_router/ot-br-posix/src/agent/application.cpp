@@ -44,84 +44,76 @@
 
 namespace otbr {
 
-std::atomic_bool     Application::sShouldTerminate(false);
-const struct timeval Application::kPollTimeout = {10, 0};
+#ifndef OTBR_MAINLOOP_POLL_TIMEOUT_SEC
+#define OTBR_MAINLOOP_POLL_TIMEOUT_SEC 10
+#endif
 
-Application::Application(const std::string               &aInterfaceName,
-                         const std::vector<const char *> &aBackboneInterfaceNames,
-                         const std::vector<const char *> &aRadioUrls,
-                         bool                             aEnableAutoAttach,
-                         const std::string               &aRestListenAddress,
-                         int                              aRestListenPort)
+std::atomic_bool     Application::sShouldTerminate(false);
+const struct timeval Application::kPollTimeout = {OTBR_MAINLOOP_POLL_TIMEOUT_SEC, 0};
+
+Application::Application(Host::ThreadHost  &aHost,
+                         const std::string &aInterfaceName,
+                         const std::string &aBackboneInterfaceName,
+                         const std::string &aRestListenAddress,
+                         int                aRestListenPort)
     : mInterfaceName(aInterfaceName)
-#if __linux__
-    , mInfraLinkSelector(aBackboneInterfaceNames)
-    , mBackboneInterfaceName(mInfraLinkSelector.Select())
-#else
-    , mBackboneInterfaceName(aBackboneInterfaceNames.empty() ? "" : aBackboneInterfaceNames.front())
-#endif
-    , mNcp(mInterfaceName.c_str(), aRadioUrls, mBackboneInterfaceName, /* aDryRun */ false, aEnableAutoAttach)
-#if OTBR_ENABLE_BORDER_AGENT
-    , mBorderAgent(mNcp)
-#endif
-#if OTBR_ENABLE_BACKBONE_ROUTER
-    , mBackboneAgent(mNcp, aInterfaceName, mBackboneInterfaceName)
-#endif
-#if OTBR_ENABLE_OPENWRT
-    , mUbusAgent(mNcp)
-#endif
-#if OTBR_ENABLE_REST_SERVER
-    , mRestWebServer(mNcp, aRestListenAddress, aRestListenPort)
+    , mBackboneInterfaceName(aBackboneInterfaceName.c_str())
+    , mHost(aHost)
+#if OTBR_ENABLE_MDNS
+    , mPublisher(
+          Mdns::Publisher::Create([this](Mdns::Publisher::State aState) { mMdnsStateSubject.UpdateState(aState); }))
 #endif
 #if OTBR_ENABLE_DBUS_SERVER && OTBR_ENABLE_BORDER_AGENT
-    , mDBusAgent(mNcp, mBorderAgent.GetPublisher())
-#endif
-#if OTBR_ENABLE_VENDOR_SERVER
-    , mVendorServer(mNcp)
+    , mDBusAgent(MakeUnique<DBus::DBusAgent>(mHost, *mPublisher))
 #endif
 {
-    OTBR_UNUSED_VARIABLE(aRestListenAddress);
-    OTBR_UNUSED_VARIABLE(aRestListenPort);
+    if (mHost.GetCoprocessorType() == OT_COPROCESSOR_RCP)
+    {
+        CreateRcpMode(aRestListenAddress, aRestListenPort);
+    }
 }
 
 void Application::Init(void)
 {
-    mNcp.Init();
+    mHost.Init();
 
-#if OTBR_ENABLE_BORDER_AGENT
-    mBorderAgent.Init();
-#endif
-#if OTBR_ENABLE_BACKBONE_ROUTER
-    mBackboneAgent.Init();
-#endif
-#if OTBR_ENABLE_OPENWRT
-    mUbusAgent.Init();
-#endif
-#if OTBR_ENABLE_REST_SERVER
-    mRestWebServer.Init();
-#endif
-#if OTBR_ENABLE_DBUS_SERVER
-    mDBusAgent.Init();
-#endif
-#if OTBR_ENABLE_VENDOR_SERVER
-    mVendorServer.Init();
-#endif
+    switch (mHost.GetCoprocessorType())
+    {
+    case OT_COPROCESSOR_RCP:
+        InitRcpMode();
+        break;
+    case OT_COPROCESSOR_NCP:
+        InitNcpMode();
+        break;
+    default:
+        DieNow("Unknown coprocessor type!");
+        break;
+    }
+
+    otbrLogInfo("Co-processor version: %s", mHost.GetCoprocessorVersion());
 }
 
 void Application::Deinit(void)
 {
-#if OTBR_ENABLE_BORDER_AGENT
-    mBorderAgent.Deinit();
-#endif
+    switch (mHost.GetCoprocessorType())
+    {
+    case OT_COPROCESSOR_RCP:
+        DeinitRcpMode();
+        break;
+    case OT_COPROCESSOR_NCP:
+        DeinitNcpMode();
+        break;
+    default:
+        DieNow("Unknown coprocessor type!");
+        break;
+    }
 
-    mNcp.Deinit();
+    mHost.Deinit();
 }
 
 otbrError Application::Run(void)
 {
     otbrError error = OTBR_ERROR_NONE;
-
-    otbrLogInfo("Thread Border Router started on AIL %s.", mBackboneInterfaceName);
 
 #ifdef HAVE_LIBSYSTEMD
     if (getenv("SYSTEMD_EXEC_PID") != nullptr)
@@ -169,17 +161,14 @@ otbrError Application::Run(void)
         {
             MainloopManager::GetInstance().Process(mainloop);
 
-#if __linux__
+            if (mErrorCondition)
             {
-                const char *newInfraLink = mInfraLinkSelector.Select();
-
-                if (mBackboneInterfaceName != newInfraLink)
+                error = mErrorCondition();
+                if (error != OTBR_ERROR_NONE)
                 {
-                    error = OTBR_ERROR_INFRA_LINK_CHANGED;
                     break;
                 }
             }
-#endif
         }
         else if (errno != EINTR)
         {
@@ -196,6 +185,125 @@ void Application::HandleSignal(int aSignal)
 {
     sShouldTerminate = true;
     signal(aSignal, SIG_DFL);
+}
+
+void Application::CreateRcpMode(const std::string &aRestListenAddress, int aRestListenPort)
+{
+    otbr::Host::RcpHost &rcpHost = static_cast<otbr::Host::RcpHost &>(mHost);
+#if OTBR_ENABLE_BORDER_AGENT
+    mBorderAgent = MakeUnique<BorderAgent>(rcpHost, *mPublisher);
+#endif
+#if OTBR_ENABLE_BACKBONE_ROUTER
+    mBackboneAgent = MakeUnique<BackboneRouter::BackboneAgent>(rcpHost, mInterfaceName, mBackboneInterfaceName);
+#endif
+#if OTBR_ENABLE_SRP_ADVERTISING_PROXY
+    mAdvertisingProxy = MakeUnique<AdvertisingProxy>(rcpHost, *mPublisher);
+#endif
+#if OTBR_ENABLE_DNSSD_DISCOVERY_PROXY
+    mDiscoveryProxy = MakeUnique<Dnssd::DiscoveryProxy>(rcpHost, *mPublisher);
+#endif
+#if OTBR_ENABLE_TREL
+    mTrelDnssd = MakeUnique<TrelDnssd::TrelDnssd>(rcpHost, *mPublisher);
+#endif
+#if OTBR_ENABLE_OPENWRT
+    mUbusAgent = MakeUnique<ubus::UBusAgent>(rcpHost);
+#endif
+#if OTBR_ENABLE_REST_SERVER
+    mRestWebServer = MakeUnique<rest::RestWebServer>(rcpHost, aRestListenAddress, aRestListenPort);
+#endif
+#if OTBR_ENABLE_VENDOR_SERVER
+    mVendorServer = vendor::VendorServer::newInstance(*this);
+#endif
+
+    OT_UNUSED_VARIABLE(aRestListenAddress);
+    OT_UNUSED_VARIABLE(aRestListenPort);
+}
+
+void Application::InitRcpMode(void)
+{
+#if OTBR_ENABLE_BORDER_AGENT
+    mMdnsStateSubject.AddObserver(*mBorderAgent);
+#endif
+#if OTBR_ENABLE_SRP_ADVERTISING_PROXY
+    mMdnsStateSubject.AddObserver(*mAdvertisingProxy);
+#endif
+#if OTBR_ENABLE_DNSSD_DISCOVERY_PROXY
+    mMdnsStateSubject.AddObserver(*mDiscoveryProxy);
+#endif
+#if OTBR_ENABLE_TREL
+    mMdnsStateSubject.AddObserver(*mTrelDnssd);
+#endif
+
+#if OTBR_ENABLE_MDNS
+    mPublisher->Start();
+#endif
+#if OTBR_ENABLE_BORDER_AGENT
+// This is for delaying publishing the MeshCoP service until the correct
+// vendor name and OUI etc. are correctly set by BorderAgent::SetMeshCopServiceValues()
+#if OTBR_STOP_BORDER_AGENT_ON_INIT
+    mBorderAgent->SetEnabled(false);
+#else
+    mBorderAgent->SetEnabled(true);
+#endif
+#endif
+#if OTBR_ENABLE_BACKBONE_ROUTER
+    mBackboneAgent->Init();
+#endif
+#if OTBR_ENABLE_SRP_ADVERTISING_PROXY
+    mAdvertisingProxy->SetEnabled(true);
+#endif
+#if OTBR_ENABLE_DNSSD_DISCOVERY_PROXY
+    mDiscoveryProxy->SetEnabled(true);
+#endif
+#if OTBR_ENABLE_OPENWRT
+    mUbusAgent->Init();
+#endif
+#if OTBR_ENABLE_REST_SERVER
+    mRestWebServer->Init();
+#endif
+#if OTBR_ENABLE_DBUS_SERVER
+    mDBusAgent->Init(*mBorderAgent);
+#endif
+#if OTBR_ENABLE_VENDOR_SERVER
+    mVendorServer->Init();
+#endif
+}
+
+void Application::DeinitRcpMode(void)
+{
+#if OTBR_ENABLE_SRP_ADVERTISING_PROXY
+    mAdvertisingProxy->SetEnabled(false);
+#endif
+#if OTBR_ENABLE_DNSSD_DISCOVERY_PROXY
+    mDiscoveryProxy->SetEnabled(false);
+#endif
+#if OTBR_ENABLE_BORDER_AGENT
+    mBorderAgent->SetEnabled(false);
+#endif
+#if OTBR_ENABLE_MDNS
+    mMdnsStateSubject.Clear();
+    mPublisher->Stop();
+#endif
+}
+
+void Application::InitNcpMode(void)
+{
+#if OTBR_ENABLE_SRP_ADVERTISING_PROXY
+    otbr::Host::NcpHost &ncpHost = static_cast<otbr::Host::NcpHost &>(mHost);
+    ncpHost.SetMdnsPublisher(mPublisher.get());
+    mMdnsStateSubject.AddObserver(ncpHost);
+    mPublisher->Start();
+#endif
+#if OTBR_ENABLE_DBUS_SERVER
+    mDBusAgent->Init(*mBorderAgent);
+#endif
+}
+
+void Application::DeinitNcpMode(void)
+{
+#if OTBR_ENABLE_SRP_ADVERTISING_PROXY
+    mPublisher->Stop();
+#endif
 }
 
 } // namespace otbr

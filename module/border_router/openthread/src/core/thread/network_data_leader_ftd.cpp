@@ -35,47 +35,12 @@
 
 #if OPENTHREAD_FTD
 
-#include "coap/coap_message.hpp"
-#include "common/as_core_type.hpp"
-#include "common/code_utils.hpp"
-#include "common/debug.hpp"
-#include "common/encoding.hpp"
-#include "common/instance.hpp"
-#include "common/locator_getters.hpp"
-#include "common/log.hpp"
-#include "common/message.hpp"
-#include "common/timer.hpp"
-#include "mac/mac_types.hpp"
-#include "meshcop/meshcop.hpp"
-#include "thread/lowpan.hpp"
-#include "thread/mle_router.hpp"
-#include "thread/thread_netif.hpp"
-#include "thread/thread_tlvs.hpp"
-#include "thread/uri_paths.hpp"
+#include "instance/instance.hpp"
 
 namespace ot {
 namespace NetworkData {
 
 RegisterLogModule("NetworkData");
-
-Leader::Leader(Instance &aInstance)
-    : LeaderBase(aInstance)
-#if OPENTHREAD_CONFIG_BORDER_ROUTER_SIGNAL_NETWORK_DATA_FULL
-    , mIsClone(false)
-#endif
-    , mWaitingForNetDataSync(false)
-    , mContextIds(aInstance)
-    , mTimer(aInstance)
-{
-    Reset();
-}
-
-void Leader::Reset(void)
-{
-    LeaderBase::Reset();
-
-    mContextIds.Clear();
-}
 
 void Leader::Start(Mle::LeaderStartMode aStartMode)
 {
@@ -134,6 +99,117 @@ exit:
     return;
 }
 
+Error Leader::AnycastLookup(uint16_t aAloc16, uint16_t &aRloc16) const
+{
+    Error error = kErrorNone;
+
+    aRloc16 = Mle::kInvalidRloc16;
+
+    if (aAloc16 == Mle::kAloc16Leader)
+    {
+        aRloc16 = Get<Mle::Mle>().GetLeaderRloc16();
+    }
+    else if (aAloc16 <= Mle::kAloc16DhcpAgentEnd)
+    {
+        uint8_t contextId = static_cast<uint8_t>(aAloc16 - Mle::kAloc16DhcpAgentStart + 1);
+
+        error = LookupRouteForAgentAloc(contextId, IsEntryForDhcp6Agent, aRloc16);
+    }
+    else if (aAloc16 <= Mle::kAloc16ServiceEnd)
+    {
+        error = LookupRouteForServiceAloc(aAloc16, aRloc16);
+    }
+    else if (aAloc16 <= Mle::kAloc16CommissionerEnd)
+    {
+        error = FindBorderAgentRloc(aRloc16);
+    }
+#if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+    else if (aAloc16 == Mle::kAloc16BackboneRouterPrimary)
+    {
+        VerifyOrExit(Get<BackboneRouter::Leader>().HasPrimary(), error = kErrorDrop);
+        aRloc16 = Get<BackboneRouter::Leader>().GetServer16();
+    }
+#endif
+    else if ((aAloc16 >= Mle::kAloc16NeighborDiscoveryAgentStart) && (aAloc16 <= Mle::kAloc16NeighborDiscoveryAgentEnd))
+    {
+        uint8_t contextId = static_cast<uint8_t>(aAloc16 - Mle::kAloc16NeighborDiscoveryAgentStart + 1);
+
+        error = LookupRouteForAgentAloc(contextId, IsEntryForNdAgent, aRloc16);
+    }
+    else
+    {
+        error = kErrorDrop;
+    }
+
+    SuccessOrExit(error);
+    VerifyOrExit(aRloc16 != Mle::kInvalidRloc16, error = kErrorNoRoute);
+
+    if (Mle::IsChildRloc16(aRloc16))
+    {
+        // If the selected destination is a child, we use its parent
+        // as the destination unless the device itself is the
+        // parent of the `aRloc16`.
+
+        uint16_t parentRloc16 = Mle::ParentRloc16ForRloc16(aRloc16);
+
+        if (!Get<Mle::Mle>().HasRloc16(parentRloc16))
+        {
+            aRloc16 = parentRloc16;
+        }
+    }
+
+exit:
+    return error;
+}
+
+Error Leader::LookupRouteForServiceAloc(uint16_t aAloc16, uint16_t &aRloc16) const
+{
+    Error             error      = kErrorNoRoute;
+    const ServiceTlv *serviceTlv = FindServiceById(Mle::ServiceIdFromAloc(aAloc16));
+
+    if (serviceTlv != nullptr)
+    {
+        TlvIterator      subTlvIterator(*serviceTlv);
+        const ServerTlv *bestServerTlv = nullptr;
+        const ServerTlv *serverTlv;
+
+        while ((serverTlv = subTlvIterator.Iterate<ServerTlv>()) != nullptr)
+        {
+            if ((bestServerTlv == nullptr) || CompareRouteEntries(*serverTlv, *bestServerTlv) > 0)
+            {
+                bestServerTlv = serverTlv;
+            }
+        }
+
+        if (bestServerTlv != nullptr)
+        {
+            aRloc16 = bestServerTlv->GetServer16();
+            error   = kErrorNone;
+        }
+    }
+
+    return error;
+}
+
+bool Leader::IsEntryForDhcp6Agent(const BorderRouterEntry &aEntry) { return aEntry.IsDhcp() || aEntry.IsConfigure(); }
+
+bool Leader::IsEntryForNdAgent(const BorderRouterEntry &aEntry) { return aEntry.IsNdDns(); }
+
+Error Leader::LookupRouteForAgentAloc(uint8_t aContextId, EntryChecker aEntryChecker, uint16_t &aRloc16) const
+{
+    Error             error = kErrorNoRoute;
+    const PrefixTlv  *prefixTlv;
+    const ContextTlv *contextTlv;
+
+    prefixTlv = FindPrefixTlvForContextId(aContextId, contextTlv);
+    VerifyOrExit(prefixTlv != nullptr);
+
+    error = LookupRouteIn(*prefixTlv, aEntryChecker, aRloc16);
+
+exit:
+    return error;
+}
+
 void Leader::RemoveBorderRouter(uint16_t aRloc16, MatchMode aMatchMode)
 {
     ChangedFlags flags;
@@ -186,96 +262,37 @@ exit:
 
 template <> void Leader::HandleTmf<kUriCommissionerSet>(Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
 {
-    uint16_t                 offset = aMessage.GetOffset();
-    uint16_t                 length = aMessage.GetLength() - aMessage.GetOffset();
-    uint8_t                  tlvs[NetworkData::kMaxSize];
-    MeshCoP::StateTlv::State state        = MeshCoP::StateTlv::kReject;
-    bool                     hasSessionId = false;
-    bool                     hasValidTlv  = false;
-    uint16_t                 sessionId    = 0;
-    CommissioningDataTlv    *commDataTlv;
-
-    MeshCoP::Tlv *cur;
-    MeshCoP::Tlv *end;
+    MeshCoP::StateTlv::State state = MeshCoP::StateTlv::kReject;
+    uint16_t                 borderAgentRloc;
+    uint16_t                 sessionId;
+    uint16_t                 localSessionId;
 
     VerifyOrExit(Get<Mle::Mle>().IsLeader() && !mWaitingForNetDataSync);
 
-    VerifyOrExit(length <= sizeof(tlvs));
+    // Validate that there is no Border Agent Locator TLV. This also
+    // validates that all included TLVs are properly formatted.
 
-    aMessage.ReadBytes(offset, tlvs, length);
+    VerifyOrExit(Tlv::Find<MeshCoP::BorderAgentLocatorTlv>(aMessage, borderAgentRloc) == kErrorNotFound);
 
-    // Session Id and Border Router Locator MUST NOT be set, but accept including unexpected or
-    // unknown TLV as long as there is at least one valid TLV.
-    cur = reinterpret_cast<MeshCoP::Tlv *>(tlvs);
-    end = reinterpret_cast<MeshCoP::Tlv *>(tlvs + length);
+    SuccessOrExit(Tlv::Find<MeshCoP::CommissionerSessionIdTlv>(aMessage, sessionId));
 
-    while (cur < end)
+    if (FindCommissioningSessionId(localSessionId) == kErrorNone)
     {
-        MeshCoP::Tlv::Type type;
-
-        VerifyOrExit(((cur + 1) <= end) && !cur->IsExtended() && (cur->GetNext() <= end));
-
-        type = cur->GetType();
-
-        if (type == MeshCoP::Tlv::kJoinerUdpPort || type == MeshCoP::Tlv::kSteeringData)
-        {
-            hasValidTlv = true;
-        }
-        else if (type == MeshCoP::Tlv::kBorderAgentLocator)
-        {
-            ExitNow();
-        }
-        else if (type == MeshCoP::Tlv::kCommissionerSessionId)
-        {
-            MeshCoP::CommissionerSessionIdTlv *tlv = As<MeshCoP::CommissionerSessionIdTlv>(cur);
-
-            VerifyOrExit(tlv->IsValid());
-            sessionId    = tlv->GetCommissionerSessionId();
-            hasSessionId = true;
-        }
-        else
-        {
-            // do nothing for unexpected or unknown TLV
-        }
-
-        cur = cur->GetNext();
+        VerifyOrExit(sessionId == localSessionId);
     }
 
-    // verify whether or not commissioner session id TLV is included
-    VerifyOrExit(hasSessionId);
+    // Add the Border Agent RLOC TLV from Network Data.
 
-    // verify whether or not MGMT_COMM_SET.req includes at least one valid TLV
-    VerifyOrExit(hasValidTlv);
-
-    // Find Commissioning Data TLV
-    commDataTlv = GetCommissioningData();
-
-    if (commDataTlv != nullptr)
+    if (FindBorderAgentRloc(borderAgentRloc) == kErrorNone)
     {
-        // Iterate over MeshCoP TLVs and extract desired data
-        for (cur = reinterpret_cast<MeshCoP::Tlv *>(commDataTlv->GetValue());
-             cur < reinterpret_cast<MeshCoP::Tlv *>(commDataTlv->GetValue() + commDataTlv->GetLength());
-             cur = cur->GetNext())
-        {
-            if (cur->GetType() == MeshCoP::Tlv::kCommissionerSessionId)
-            {
-                VerifyOrExit(sessionId == As<MeshCoP::CommissionerSessionIdTlv>(cur)->GetCommissionerSessionId());
-            }
-            else if (cur->GetType() == MeshCoP::Tlv::kBorderAgentLocator)
-            {
-                VerifyOrExit(length + cur->GetSize() <= sizeof(tlvs));
-                memcpy(tlvs + length, reinterpret_cast<uint8_t *>(cur), cur->GetSize());
-                length += cur->GetSize();
-            }
-        }
+        SuccessOrExit(Tlv::Append<MeshCoP::BorderAgentLocatorTlv>(aMessage, borderAgentRloc));
     }
 
-    IgnoreError(SetCommissioningData(tlvs, static_cast<uint8_t>(length)));
+    SuccessOrExit(SetCommissioningData(aMessage));
 
     state = MeshCoP::StateTlv::kAccept;
 
 exit:
-
     if (Get<Mle::MleRouter>().IsLeader())
     {
         SendCommissioningSetResponse(aMessage, aMessageInfo, state);
@@ -284,94 +301,39 @@ exit:
 
 template <> void Leader::HandleTmf<kUriCommissionerGet>(Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
 {
-    uint16_t length = 0;
-    uint16_t offset;
+    Error          error    = kErrorNone;
+    Coap::Message *response = nullptr;
 
-    VerifyOrExit(Get<Mle::Mle>().IsLeader() && !mWaitingForNetDataSync);
+    VerifyOrExit(Get<Mle::Mle>().IsLeader() && !mWaitingForNetDataSync, error = kErrorInvalidState);
 
-    SuccessOrExit(Tlv::FindTlvValueOffset(aMessage, MeshCoP::Tlv::kGet, offset, length));
-    aMessage.SetOffset(offset);
+    response = ProcessCommissionerGetRequest(aMessage);
+    VerifyOrExit(response != nullptr, error = kErrorParse);
+    SuccessOrExit(error = Get<Tmf::Agent>().SendMessage(*response, aMessageInfo));
 
-exit:
-    if (Get<Mle::MleRouter>().IsLeader())
-    {
-        SendCommissioningGetResponse(aMessage, length, aMessageInfo);
-    }
-}
-
-void Leader::SendCommissioningGetResponse(const Coap::Message    &aRequest,
-                                          uint16_t                aLength,
-                                          const Ip6::MessageInfo &aMessageInfo)
-{
-    Error                 error = kErrorNone;
-    Coap::Message        *message;
-    CommissioningDataTlv *commDataTlv;
-    uint8_t              *data   = nullptr;
-    uint8_t               length = 0;
-
-    message = Get<Tmf::Agent>().NewPriorityResponseMessage(aRequest);
-    VerifyOrExit(message != nullptr, error = kErrorNoBufs);
-
-    commDataTlv = GetCommissioningData();
-
-    if (commDataTlv != nullptr)
-    {
-        data   = commDataTlv->GetValue();
-        length = commDataTlv->GetLength();
-    }
-
-    VerifyOrExit(data && length, error = kErrorDrop);
-
-    if (aLength == 0)
-    {
-        SuccessOrExit(error = message->AppendBytes(data, length));
-    }
-    else
-    {
-        for (uint16_t index = 0; index < aLength; index++)
-        {
-            uint8_t type;
-
-            IgnoreError(aRequest.Read(aRequest.GetOffset() + index, type));
-
-            for (MeshCoP::Tlv *cur                                          = reinterpret_cast<MeshCoP::Tlv *>(data);
-                 cur < reinterpret_cast<MeshCoP::Tlv *>(data + length); cur = cur->GetNext())
-            {
-                if (cur->GetType() == type)
-                {
-                    SuccessOrExit(error = cur->AppendTo(*message));
-                    break;
-                }
-            }
-        }
-    }
-
-    SuccessOrExit(error = Get<Tmf::Agent>().SendMessage(*message, aMessageInfo));
-
-    LogInfo("Sent %s response", UriToString<kUriCommissionerGet>());
+    LogInfo("Sent %s response to %s", UriToString<kUriCommissionerGet>(),
+            aMessageInfo.GetPeerAddr().ToString().AsCString());
 
 exit:
-    FreeMessageOnError(message, error);
+    LogWarnOnError(error, "send CommissionerGet response");
+    FreeMessageOnError(response, error);
 }
 
 void Leader::SendCommissioningSetResponse(const Coap::Message     &aRequest,
                                           const Ip6::MessageInfo  &aMessageInfo,
                                           MeshCoP::StateTlv::State aState)
 {
-    Error          error = kErrorNone;
-    Coap::Message *message;
+    Coap::Message *message = Get<Tmf::Agent>().NewPriorityResponseMessage(aRequest);
 
-    message = Get<Tmf::Agent>().NewPriorityResponseMessage(aRequest);
-    VerifyOrExit(message != nullptr, error = kErrorNoBufs);
+    VerifyOrExit(message != nullptr);
+    SuccessOrExit(Tlv::Append<MeshCoP::StateTlv>(*message, aState));
 
-    SuccessOrExit(error = Tlv::Append<MeshCoP::StateTlv>(*message, aState));
+    SuccessOrExit(Get<Tmf::Agent>().SendMessage(*message, aMessageInfo));
+    message = nullptr; // `SendMessage` takes ownership on success
 
-    SuccessOrExit(error = Get<Tmf::Agent>().SendMessage(*message, aMessageInfo));
-
-    LogInfo("sent %s response", UriToString<kUriCommissionerSet>());
+    LogInfo("Sent %s response", UriToString<kUriCommissionerSet>());
 
 exit:
-    FreeMessageOnError(message, error);
+    FreeMessage(message);
 }
 
 bool Leader::RlocMatch(uint16_t aFirstRloc16, uint16_t aSecondRloc16, MatchMode aMatchMode)
@@ -717,7 +679,7 @@ void Leader::CheckForNetDataGettingFull(const NetworkData &aNetworkData, uint16_
         leaderClone.MarkAsClone();
         SuccessOrAssert(CopyNetworkData(kFullSet, leaderClone));
 
-        if (aOldRloc16 != Mac::kShortAddrInvalid)
+        if (aOldRloc16 != Mle::kInvalidRloc16)
         {
             leaderClone.RemoveBorderRouter(aOldRloc16, kMatchModeRloc16);
         }
@@ -781,10 +743,7 @@ exit:
     if (!mIsClone)
 #endif
     {
-        if (error != kErrorNone)
-        {
-            LogNote("Failed to register network data: %s", ErrorToString(error));
-        }
+        LogWarnOnError(error, "register network data");
     }
 }
 
@@ -1018,13 +977,13 @@ Error Leader::AllocateServiceId(uint8_t &aServiceId) const
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_SIGNAL_NETWORK_DATA_FULL
     if (mIsClone)
     {
-        aServiceId = Mle::kServiceMinId;
+        aServiceId = kMinServiceId;
         error      = kErrorNone;
         ExitNow();
     }
 #endif
 
-    for (serviceId = Mle::kServiceMinId; serviceId <= Mle::kServiceMaxId; serviceId++)
+    for (serviceId = kMinServiceId; serviceId <= kMaxServiceId; serviceId++)
     {
         if (FindServiceById(serviceId) == nullptr)
         {
@@ -1319,8 +1278,31 @@ void Leader::HandleNetworkDataRestoredAfterReset(void)
 {
     const PrefixTlv *prefix;
     TlvIterator      tlvIterator(GetTlvsStart(), GetTlvsEnd());
+    ChangedFlags     flags;
+    uint16_t         rloc16;
+    uint16_t         sessionId;
+    Rlocs            rlocs;
 
     mWaitingForNetDataSync = false;
+
+    // Remove entries in Network Data from any un-allocated Router ID.
+    // This acts as a safeguard against an edge case where the leader
+    // is reset at an inopportune time, such as right after it removed
+    // an allocated router ID and sent MLE advertisement but before it
+    // got the chance to send the updated Network Data to other
+    // routers.
+
+    FindRlocs(kAnyBrOrServer, kAnyRole, rlocs);
+
+    for (uint16_t rloc : rlocs)
+    {
+        if (!Get<RouterTable>().IsAllocated(Mle::RouterIdFromRloc16(rloc)))
+        {
+            RemoveRloc(rloc, kMatchModeRouterId, flags);
+        }
+    }
+
+    IncrementVersions(flags);
 
     // Synchronize internal 6LoWPAN Context ID Set with the
     // recently obtained Network Data.
@@ -1341,6 +1323,91 @@ void Leader::HandleNetworkDataRestoredAfterReset(void)
             mContextIds.ScheduleToRemove(context->GetContextId());
         }
     }
+
+    // Update Commissioning Data. We adopt the same session ID
+    // (if any) and resign active commissioner (if any) by
+    // clearing the Commissioning Data.
+
+    if (FindCommissioningSessionId(sessionId) == kErrorNone)
+    {
+        Get<MeshCoP::Leader>().SetSessionId(sessionId);
+    }
+
+    if (FindBorderAgentRloc(rloc16) == kErrorNone)
+    {
+        Get<MeshCoP::Leader>().SetEmptyCommissionerData();
+    }
+}
+
+Error Leader::UpdateCommissioningData(uint16_t aDataLength, CommissioningDataTlv *&aDataTlv)
+{
+    // First determine whether or not we can add Commissioning Data
+    // TLV with the given `aDataLength`, taking into account that we
+    // would remove the current Commissioning Data TLV. Then remove
+    // the current TLV and append a new TLV with proper size which is
+    // returned in `aDataTlv`.
+
+    Error                 error   = kErrorNone;
+    CommissioningDataTlv *dataTlv = FindCommissioningData();
+    uint16_t              insertLength;
+
+    if (dataTlv != nullptr)
+    {
+        insertLength = (aDataLength <= dataTlv->GetLength()) ? 0 : aDataLength - dataTlv->GetLength();
+    }
+    else
+    {
+        insertLength = sizeof(CommissioningDataTlv) + aDataLength;
+    }
+
+    VerifyOrExit(CanInsert(insertLength), error = kErrorNoBufs);
+
+    if (dataTlv != nullptr)
+    {
+        RemoveTlv(dataTlv);
+    }
+
+    aDataTlv = As<CommissioningDataTlv>(AppendTlv(sizeof(CommissioningDataTlv) + aDataLength));
+
+    OT_ASSERT(aDataTlv != nullptr);
+
+    aDataTlv->Init();
+    aDataTlv->SetLength(static_cast<uint8_t>(aDataLength));
+
+    // The caller would fill the `aDataTlv` value.
+
+    mVersion++;
+    SignalNetDataChanged();
+
+exit:
+    return error;
+}
+
+Error Leader::SetCommissioningData(const void *aData, uint8_t aDataLength)
+{
+    Error                 error = kErrorNone;
+    CommissioningDataTlv *dataTlv;
+
+    SuccessOrExit(error = UpdateCommissioningData(aDataLength, dataTlv));
+    memcpy(dataTlv->GetValue(), aData, aDataLength);
+
+exit:
+    return error;
+}
+
+Error Leader::SetCommissioningData(const Message &aMessage)
+{
+    Error                 error = kErrorNone;
+    OffsetRange           offsetRange;
+    CommissioningDataTlv *dataTlv;
+
+    offsetRange.InitFromMessageOffsetToEnd(aMessage);
+
+    SuccessOrExit(error = UpdateCommissioningData(offsetRange.GetLength(), dataTlv));
+    aMessage.ReadBytes(offsetRange, dataTlv->GetValue());
+
+exit:
+    return error;
 }
 
 void Leader::HandleTimer(void)
@@ -1355,45 +1422,6 @@ void Leader::HandleTimer(void)
         mContextIds.HandleTimer();
     }
 }
-
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
-bool Leader::ContainsOmrPrefix(const Ip6::Prefix &aPrefix)
-{
-    PrefixTlv *prefixTlv;
-    bool       contains = false;
-
-    VerifyOrExit(BorderRouter::RoutingManager::IsValidOmrPrefix(aPrefix));
-
-    prefixTlv = FindPrefix(aPrefix);
-    VerifyOrExit(prefixTlv != nullptr);
-
-    for (int i = 0; i < 2; i++)
-    {
-        const BorderRouterTlv *borderRouter = prefixTlv->FindSubTlv<BorderRouterTlv>(/* aStable */ (i == 0));
-
-        if (borderRouter == nullptr)
-        {
-            continue;
-        }
-
-        for (const BorderRouterEntry *entry = borderRouter->GetFirstEntry(); entry <= borderRouter->GetLastEntry();
-             entry                          = entry->GetNext())
-        {
-            OnMeshPrefixConfig config;
-
-            config.SetFrom(*prefixTlv, *borderRouter, *entry);
-
-            if (BorderRouter::RoutingManager::IsValidOmrPrefix(config))
-            {
-                ExitNow(contains = true);
-            }
-        }
-    }
-
-exit:
-    return contains;
-}
-#endif
 
 //---------------------------------------------------------------------------------------------------------------------
 // Leader::ContextIds
@@ -1471,8 +1499,7 @@ void Leader::ContextIds::SetRemoveTime(uint8_t aId, TimeMilli aTime)
 
 void Leader::ContextIds::HandleTimer(void)
 {
-    TimeMilli now      = TimerMilli::GetNow();
-    TimeMilli nextTime = now.GetDistantFuture();
+    NextFireTime nextTime;
 
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_SIGNAL_NETWORK_DATA_FULL
     OT_ASSERT(!mIsClone);
@@ -1485,21 +1512,18 @@ void Leader::ContextIds::HandleTimer(void)
             continue;
         }
 
-        if (now >= GetRemoveTime(id))
+        if (nextTime.GetNow() >= GetRemoveTime(id))
         {
             MarkAsUnallocated(id);
             Get<Leader>().RemoveContext(id);
         }
         else
         {
-            nextTime = Min(nextTime, GetRemoveTime(id));
+            nextTime.UpdateIfEarlier(GetRemoveTime(id));
         }
     }
 
-    if (nextTime != now.GetDistantFuture())
-    {
-        Get<Leader>().mTimer.FireAt(nextTime);
-    }
+    Get<Leader>().mTimer.FireAt(nextTime);
 }
 
 } // namespace NetworkData

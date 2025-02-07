@@ -40,8 +40,8 @@
 #include "openthread-core-config.h"
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
-#include "common/instance.hpp"
 #include "common/new.hpp"
+#include "instance/instance.hpp"
 #include "net/ip6.hpp"
 
 #if OPENTHREAD_CONFIG_NCP_SPI_ENABLE
@@ -226,7 +226,10 @@ exit:
     return shouldProcess;
 }
 
-void NcpSpi::SpiTransactionProcess(void *aContext) { reinterpret_cast<NcpSpi *>(aContext)->SpiTransactionProcess(); }
+void NcpSpi::SpiTransactionProcess(void *aContext)
+{
+    reinterpret_cast<NcpSpi *>(aContext)->SpiTransactionProcess();
+}
 
 void NcpSpi::SpiTransactionProcess(void)
 {

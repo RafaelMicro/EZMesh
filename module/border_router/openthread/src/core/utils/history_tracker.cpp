@@ -35,15 +35,7 @@
 
 #if OPENTHREAD_CONFIG_HISTORY_TRACKER_ENABLE
 
-#include "common/as_core_type.hpp"
-#include "common/code_utils.hpp"
-#include "common/debug.hpp"
-#include "common/instance.hpp"
-#include "common/locator_getters.hpp"
-#include "common/num_utils.hpp"
-#include "common/string.hpp"
-#include "common/timer.hpp"
-#include "net/ip6_headers.hpp"
+#include "instance/instance.hpp"
 
 namespace ot {
 namespace Utils {
@@ -61,7 +53,7 @@ HistoryTracker::HistoryTracker(Instance &aInstance)
     mTimer.Start(kAgeCheckPeriod);
 
 #if OPENTHREAD_FTD && (OPENTHREAD_CONFIG_HISTORY_TRACKER_ROUTER_LIST_SIZE > 0)
-    memset(mRouterEntries, 0, sizeof(mRouterEntries));
+    ClearAllBytes(mRouterEntries);
 #endif
 }
 

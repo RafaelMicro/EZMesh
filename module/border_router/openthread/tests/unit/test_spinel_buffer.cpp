@@ -29,7 +29,7 @@
 #include <ctype.h>
 
 #include "common/code_utils.hpp"
-#include "common/instance.hpp"
+#include "instance/instance.hpp"
 #include "common/message.hpp"
 #include "common/random.hpp"
 #include "lib/spinel/spinel_buffer.hpp"

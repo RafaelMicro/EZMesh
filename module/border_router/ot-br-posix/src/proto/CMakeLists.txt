@@ -1,12 +1,18 @@
 # Config brew protobuf version for Mac, see .github/workflows/macOS.yml
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(Protobuf_PREFIX_PATH
-        "/usr/local/opt/protobuf@21/include"            
-        "/usr/local/opt/protobuf@21/lib"             
-        "/usr/local/opt/protobuf@21/bin")
+        "/opt/homebrew/opt/protobuf@21/include"
+        "/opt/homebrew/opt/protobuf@21/lib"
+        "/opt/homebrew/opt/protobuf@21/bin")
     list(APPEND CMAKE_PREFIX_PATH "${Protobuf_PREFIX_PATH}")
 endif()
 find_package(Protobuf REQUIRED)
+
+# Protobuf library which >= 4.22 requires to link the absl
+if ("${Protobuf_VERSION}" VERSION_GREATER_EQUAL 4.22)
+    find_package(absl REQUIRED)
+    set(ABSL_LIBS absl::log_internal_check_op)
+endif()
 
 # Set up the output path.
 set(PROTO_GEN_DIR ${PROJECT_SOURCE_DIR}/build/src/proto)
@@ -58,6 +64,12 @@ add_library(otbr-proto STATIC
 )
 
 find_package(Protobuf REQUIRED)
-target_link_libraries(otbr-proto
+
+target_link_libraries(otbr-proto PUBLIC
     protobuf::libprotobuf-lite
+    ${ABSL_LIBS}
+)
+
+target_include_directories(otbr-proto PUBLIC
+    ${PROJECT_SOURCE_DIR}/build/src
 )

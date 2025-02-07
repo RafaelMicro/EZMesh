@@ -35,22 +35,7 @@
 
 #if OPENTHREAD_CONFIG_JOINER_ENABLE
 
-#include <stdio.h>
-
-#include "common/array.hpp"
-#include "common/as_core_type.hpp"
-#include "common/code_utils.hpp"
-#include "common/debug.hpp"
-#include "common/encoding.hpp"
-#include "common/instance.hpp"
-#include "common/locator_getters.hpp"
-#include "common/log.hpp"
-#include "common/string.hpp"
-#include "meshcop/meshcop.hpp"
-#include "radio/radio.hpp"
-#include "thread/thread_netif.hpp"
-#include "thread/uri_paths.hpp"
-#include "utils/otns.hpp"
+#include "instance/instance.hpp"
 
 namespace ot {
 namespace MeshCoP {
@@ -68,7 +53,7 @@ Joiner::Joiner(Instance &aInstance)
 {
     SetIdFromIeeeEui64();
     mDiscerner.Clear();
-    memset(mJoinerRouters, 0, sizeof(mJoinerRouters));
+    ClearAllBytes(mJoinerRouters);
 }
 
 void Joiner::SetIdFromIeeeEui64(void)
@@ -152,7 +137,9 @@ Error Joiner::Start(const char      *aPskd,
     Get<Mac::Mac>().SetExtAddress(randomAddress);
     Get<Mle::MleRouter>().UpdateLinkLocalAddress();
 
-    SuccessOrExit(error = Get<Tmf::SecureAgent>().Start(kJoinerUdpPort));
+    SuccessOrExit(error = Get<Tmf::SecureAgent>().Open());
+    SuccessOrExit(error = Get<Tmf::SecureAgent>().Bind(kJoinerUdpPort));
+    Get<Tmf::SecureAgent>().SetConnectCallback(HandleSecureCoapClientConnect, this);
     Get<Tmf::SecureAgent>().SetPsk(joinerPskd);
 
     for (JoinerRouter &router : mJoinerRouters)
@@ -185,7 +172,7 @@ exit:
         FreeJoinerFinalizeMessage();
     }
 
-    LogError("start joiner", error);
+    LogWarnOnError(error, "start joiner");
     return error;
 }
 
@@ -216,7 +203,7 @@ void Joiner::Finish(Error aError)
         OT_FALL_THROUGH;
 
     case kStateDiscover:
-        Get<Tmf::SecureAgent>().Stop();
+        Get<Tmf::SecureAgent>().Close();
         break;
     }
 
@@ -261,7 +248,7 @@ void Joiner::HandleDiscoverResult(Mle::DiscoverScanner::ScanResult *aResult)
 {
     VerifyOrExit(mState == kStateDiscover);
 
-    if (aResult != nullptr)
+    if (aResult != nullptr && aResult->mJoinerUdpPort > 0)
     {
         SaveDiscoveredJoinerRouter(*aResult);
     }
@@ -373,25 +360,25 @@ Error Joiner::Connect(JoinerRouter &aRouter)
 
     sockAddr.GetAddress().SetToLinkLocalAddress(aRouter.mExtAddr);
 
-    SuccessOrExit(error = Get<Tmf::SecureAgent>().Connect(sockAddr, Joiner::HandleSecureCoapClientConnect, this));
+    SuccessOrExit(error = Get<Tmf::SecureAgent>().Connect(sockAddr));
 
     SetState(kStateConnect);
 
 exit:
-    LogError("start secure joiner connection", error);
+    LogWarnOnError(error, "start secure joiner connection");
     return error;
 }
 
-void Joiner::HandleSecureCoapClientConnect(bool aConnected, void *aContext)
+void Joiner::HandleSecureCoapClientConnect(Dtls::Session::ConnectEvent aEvent, void *aContext)
 {
-    static_cast<Joiner *>(aContext)->HandleSecureCoapClientConnect(aConnected);
+    static_cast<Joiner *>(aContext)->HandleSecureCoapClientConnect(aEvent);
 }
 
-void Joiner::HandleSecureCoapClientConnect(bool aConnected)
+void Joiner::HandleSecureCoapClientConnect(Dtls::Session::ConnectEvent aEvent)
 {
     VerifyOrExit(mState == kStateConnect);
 
-    if (aConnected)
+    if (aEvent == Dtls::Session::kConnected)
     {
         SetState(kStateConnected);
         SendJoinerFinalize();
@@ -483,7 +470,7 @@ exit:
 void Joiner::HandleJoinerFinalizeResponse(void                *aContext,
                                           otMessage           *aMessage,
                                           const otMessageInfo *aMessageInfo,
-                                          Error                aResult)
+                                          otError              aResult)
 {
     static_cast<Joiner *>(aContext)->HandleJoinerFinalizeResponse(AsCoapMessagePtr(aMessage), &AsCoreType(aMessageInfo),
                                                                   aResult);
@@ -528,12 +515,12 @@ template <> void Joiner::HandleTmf<kUriJoinerEntrust>(Coap::Message &aMessage, c
 
     datasetInfo.Clear();
 
-    SuccessOrExit(error = Tlv::Find<NetworkKeyTlv>(aMessage, datasetInfo.UpdateNetworkKey()));
+    SuccessOrExit(error = Tlv::Find<NetworkKeyTlv>(aMessage, datasetInfo.Update<Dataset::kNetworkKey>()));
 
-    datasetInfo.SetChannel(Get<Mac::Mac>().GetPanChannel());
-    datasetInfo.SetPanId(Get<Mac::Mac>().GetPanId());
+    datasetInfo.Set<Dataset::kChannel>(Get<Mac::Mac>().GetPanChannel());
+    datasetInfo.Set<Dataset::kPanId>(Get<Mac::Mac>().GetPanId());
 
-    IgnoreError(Get<ActiveDatasetManager>().Save(datasetInfo));
+    Get<ActiveDatasetManager>().SaveLocal(datasetInfo);
 
     LogInfo("Joiner successful!");
 
@@ -543,7 +530,7 @@ template <> void Joiner::HandleTmf<kUriJoinerEntrust>(Coap::Message &aMessage, c
     mTimer.Start(kConfigExtAddressDelay);
 
 exit:
-    LogError("process joiner entrust", error);
+    LogWarnOnError(error, "process joiner entrust");
 }
 
 void Joiner::SendJoinerEntrustResponse(const Coap::Message &aRequest, const Ip6::MessageInfo &aRequestInfo)
@@ -612,32 +599,19 @@ const char *Joiner::StateToString(State aState)
         "Joined",     // (5) kStateJoined
     };
 
-    static_assert(kStateIdle == 0, "kStateIdle value is incorrect");
-    static_assert(kStateDiscover == 1, "kStateDiscover value is incorrect");
-    static_assert(kStateConnect == 2, "kStateConnect value is incorrect");
-    static_assert(kStateConnected == 3, "kStateConnected value is incorrect");
-    static_assert(kStateEntrust == 4, "kStateEntrust value is incorrect");
-    static_assert(kStateJoined == 5, "kStateJoined value is incorrect");
+    struct EnumCheck
+    {
+        InitEnumValidatorCounter();
+        ValidateNextEnum(kStateIdle);
+        ValidateNextEnum(kStateDiscover);
+        ValidateNextEnum(kStateConnect);
+        ValidateNextEnum(kStateConnected);
+        ValidateNextEnum(kStateEntrust);
+        ValidateNextEnum(kStateJoined);
+    };
 
     return kStateStrings[aState];
 }
-
-#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-void Joiner::LogCertMessage(const char *aText, const Coap::Message &aMessage) const
-{
-    OT_UNUSED_VARIABLE(aText);
-
-    uint8_t buf[OPENTHREAD_CONFIG_MESSAGE_BUFFER_SIZE];
-
-    VerifyOrExit(aMessage.GetLength() <= sizeof(buf));
-    aMessage.ReadBytes(aMessage.GetOffset(), buf, aMessage.GetLength() - aMessage.GetOffset());
-
-    DumpCert(aText, buf, aMessage.GetLength() - aMessage.GetOffset());
-
-exit:
-    return;
-}
-#endif
 
 // LCOV_EXCL_STOP
 

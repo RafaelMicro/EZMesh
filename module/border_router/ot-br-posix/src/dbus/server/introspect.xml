@@ -167,21 +167,22 @@
             uint8[] prefix_bytes
             uint8 prefix_length
           }
+          uint16 rloc16
           byte preference
-          struct {
-            boolean preferred
-            boolean slaac
-            boolean dhcp
-            boolean configure
-            boolean default_route
-            boolean on_mesh
-            boolean stable
-          }
+          bool preferred
+          bool slaac
+          bool dhcp
+          bool configure
+          bool default_route
+          bool on_mesh
+          bool stable
+          bool nd_dns
+          bool dp
         }
       </literallayout>
     -->
     <method name="AddOnMeshPrefix">
-      <arg name="prefix" type="((ayy)y(bbbbbbb))"/>
+      <arg name="prefix" type="((ayy)qybbbbbbbbb)"/>
     </method>
 
     <!-- RemoveOnMeshPrefix: Remove an on-mesh prefix from the network.
@@ -228,6 +229,33 @@
 
     <method name="SetNat64Enabled">
       <arg name="enable" type="b" direction="in"/>
+    </method>
+
+    <property name="EphemeralKeyEnabled" type="b" access="readwrite">
+      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+    </property>
+
+    <!-- ActivateEphemeralKeyMode: Activate ePSKc mode.
+      @lifetime: in milliseconds, duration of active ePSKc mode before secure session is established.
+                 0 for OT_BORDER_AGENT_DEFAULT_EPHEMERAL_KEY_TIMEOUT (2 min). Valid value is [0,
+                 OT_BORDER_AGENT_MAX_EPHEMERAL_KEY_TIMEOUT (10 min)].
+      @epskc: returns the ephemeral key digit string of length 9 with first 8 digits randomly generated,
+              and the last digit as verhoeff checksum.
+    -->
+    <method name="ActivateEphemeralKeyMode">
+      <arg name="lifetime" type="u" direction="in"/>
+      <arg name="epskc" type="s" direction="out"/>
+    </method>
+
+    <!-- DeactivateEphemeralKeyMode: Deactivate ePSKc mode.
+      @retain_active_session: 
+        "false" - Disconnects the Border Agent from any active secure sessions.
+                  Ephemeral key would be cleared after the session is disconnected.
+        "true" - Deactivate ephemeral key mode softly. If there is already an active commissioner
+                 connection, the session will be retained and the ephemeral key mode is still active.
+    -->
+    <method name="DeactivateEphemeralKeyMode">
+      <arg name="retain_active_session" type="b" direction="in"/>
     </method>
 
     <!-- MeshLocalPrefix: The /64 mesh-local prefix.  -->
@@ -536,6 +564,11 @@
       <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
     </property>
 
+    <!-- PendingDatasetTlvs: The Thread pending dataset tlv in binary form. -->
+    <property name="PendingDatasetTlvs" type="ay" access="read">
+      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+    </property>
+
      <!-- FeatureFlagListData: The Thread feature flags (defined as proto/feature_flag.proto)
       in binary form. -->
     <property name="FeatureFlagListData" type="ay" access="readwrite">
@@ -651,6 +684,11 @@
       </literallayout>
     -->
     <property name="MdnsTelemetryInfo" type="(uuuuuuuu)(uuuuuuuu)(uuuuuuuu)(uuuuuuuu)uuuu" access="read">
+      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
+    </property>
+
+    <!-- OtbrVersion: The version string of the otbr package. -->
+    <property name="OtbrVersion" type="s" access="read">
       <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
     </property>
 

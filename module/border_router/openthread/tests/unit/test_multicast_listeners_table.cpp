@@ -38,7 +38,7 @@
 #include "test_util.h"
 #include "backbone_router/multicast_listeners_table.hpp"
 #include "common/code_utils.hpp"
-#include "common/instance.hpp"
+#include "instance/instance.hpp"
 
 namespace ot {
 
@@ -198,3 +198,4 @@ int main(void)
 #else
 int main(void) { return 0; }
 #endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_MULTICAST_ROUTING_ENABLE
+_ENABLE

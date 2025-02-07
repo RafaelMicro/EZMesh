@@ -33,12 +33,7 @@
 
 #include "child_supervision.hpp"
 
-#include "openthread-core-config.h"
-#include "common/code_utils.hpp"
-#include "common/instance.hpp"
-#include "common/locator_getters.hpp"
-#include "common/log.hpp"
-#include "thread/thread_netif.hpp"
+#include "instance/instance.hpp"
 
 namespace ot {
 
@@ -67,13 +62,13 @@ exit:
 
 void ChildSupervisor::SendMessage(Child &aChild)
 {
-    Message *message = nullptr;
-    uint16_t childIndex;
+    OwnedPtr<Message> messagePtr;
+    uint16_t          childIndex;
 
     VerifyOrExit(aChild.GetIndirectMessageCount() == 0);
 
-    message = Get<MessagePool>().Allocate(Message::kTypeSupervision, sizeof(uint8_t));
-    VerifyOrExit(message != nullptr);
+    messagePtr.Reset(Get<MessagePool>().Allocate(Message::kTypeSupervision, sizeof(uint8_t)));
+    VerifyOrExit(messagePtr != nullptr);
 
     // Supervision message is an empty payload 15.4 data frame.
     // The child index is stored here in the message content to allow
@@ -81,15 +76,14 @@ void ChildSupervisor::SendMessage(Child &aChild)
     // `ChildSupervisor::GetDestination(message)`.
 
     childIndex = Get<ChildTable>().GetChildIndex(aChild);
-    SuccessOrExit(message->Append(childIndex));
+    SuccessOrExit(messagePtr->Append(childIndex));
 
-    SuccessOrExit(Get<MeshForwarder>().SendMessage(*message));
-    message = nullptr;
+    Get<MeshForwarder>().SendMessage(messagePtr.PassOwnership());
 
     LogInfo("Sending supervision message to child 0x%04x", aChild.GetRloc16());
 
 exit:
-    FreeMessage(message);
+    return;
 }
 
 void ChildSupervisor::UpdateOnSend(Child &aChild) { aChild.ResetSecondsSinceLastSupervision(); }
@@ -166,7 +160,7 @@ void SupervisionListener::SetInterval(uint16_t aInterval)
 
     if (Get<Mle::Mle>().IsChild())
     {
-        IgnoreError(Get<Mle::Mle>().SendChildUpdateRequest());
+        IgnoreError(Get<Mle::Mle>().SendChildUpdateRequestToParent());
     }
 
 exit:
@@ -216,7 +210,7 @@ void SupervisionListener::HandleTimer(void)
     LogWarn("Supervision timeout. No frame from parent in %u sec", mTimeout);
     mCounter++;
 
-    IgnoreError(Get<Mle::MleRouter>().SendChildUpdateRequest());
+    IgnoreError(Get<Mle::Mle>().SendChildUpdateRequestToParent());
 
 exit:
     RestartTimer();

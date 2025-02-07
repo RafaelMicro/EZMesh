@@ -68,7 +68,6 @@ class AvahiPoller;
 
 /**
  * This class implements mDNS publisher with avahi.
- *
  */
 class PublisherAvahi : public Publisher
 {
@@ -78,6 +77,7 @@ public:
 
     void      UnpublishService(const std::string &aName, const std::string &aType, ResultCallback &&aCallback) override;
     void      UnpublishHost(const std::string &aName, ResultCallback &&aCallback) override;
+    void      UnpublishKey(const std::string &aName, ResultCallback &&aCallback) override;
     void      SubscribeService(const std::string &aType, const std::string &aInstanceName) override;
     void      UnsubscribeService(const std::string &aType, const std::string &aInstanceName) override;
     void      SubscribeHost(const std::string &aHostName) override;
@@ -92,11 +92,12 @@ protected:
                                  const std::string &aType,
                                  const SubTypeList &aSubTypeList,
                                  uint16_t           aPort,
-                                 const TxtList     &aTxtList,
+                                 const TxtData     &aTxtData,
                                  ResultCallback   &&aCallback) override;
-    otbrError PublishHostImpl(const std::string             &aName,
-                              const std::vector<Ip6Address> &aAddresses,
-                              ResultCallback               &&aCallback) override;
+    otbrError PublishHostImpl(const std::string &aName,
+                              const AddressList &aAddresses,
+                              ResultCallback   &&aCallback) override;
+    otbrError PublishKeyImpl(const std::string &aName, const KeyData &aKeyData, ResultCallback &&aCallback) override;
     void      OnServiceResolveFailedImpl(const std::string &aType,
                                          const std::string &aInstanceName,
                                          int32_t            aErrorCode) override;
@@ -106,6 +107,7 @@ protected:
 private:
     static constexpr size_t   kMaxSizeOfTxtRecord = 1024;
     static constexpr uint32_t kDefaultTtl         = 10; // In seconds.
+    static constexpr uint16_t kDnsKeyRecordType   = 25;
 
     class AvahiServiceRegistration : public ServiceRegistration
     {
@@ -115,7 +117,7 @@ private:
                                  const std::string &aType,
                                  const SubTypeList &aSubTypeList,
                                  uint16_t           aPort,
-                                 const TxtList     &aTxtList,
+                                 const TxtData     &aTxtData,
                                  ResultCallback   &&aCallback,
                                  AvahiEntryGroup   *aEntryGroup,
                                  PublisherAvahi    *aPublisher)
@@ -124,7 +126,7 @@ private:
                                   aType,
                                   aSubTypeList,
                                   aPort,
-                                  aTxtList,
+                                  aTxtData,
                                   std::move(aCallback),
                                   aPublisher)
             , mEntryGroup(aEntryGroup)
@@ -141,17 +143,37 @@ private:
     class AvahiHostRegistration : public HostRegistration
     {
     public:
-        AvahiHostRegistration(const std::string             &aName,
-                              const std::vector<Ip6Address> &aAddresses,
-                              ResultCallback               &&aCallback,
-                              AvahiEntryGroup               *aEntryGroup,
-                              PublisherAvahi                *aPublisher)
+        AvahiHostRegistration(const std::string &aName,
+                              const AddressList &aAddresses,
+                              ResultCallback   &&aCallback,
+                              AvahiEntryGroup   *aEntryGroup,
+                              PublisherAvahi    *aPublisher)
             : HostRegistration(aName, aAddresses, std::move(aCallback), aPublisher)
             , mEntryGroup(aEntryGroup)
         {
         }
 
         ~AvahiHostRegistration(void) override;
+        const AvahiEntryGroup *GetEntryGroup(void) const { return mEntryGroup; }
+
+    private:
+        AvahiEntryGroup *mEntryGroup;
+    };
+
+    class AvahiKeyRegistration : public KeyRegistration
+    {
+    public:
+        AvahiKeyRegistration(const std::string &aName,
+                             const KeyData     &aKeyData,
+                             ResultCallback   &&aCallback,
+                             AvahiEntryGroup   *aEntryGroup,
+                             PublisherAvahi    *aPublisher)
+            : KeyRegistration(aName, aKeyData, std::move(aCallback), aPublisher)
+            , mEntryGroup(aEntryGroup)
+        {
+        }
+
+        ~AvahiKeyRegistration(void) override;
         const AvahiEntryGroup *GetEntryGroup(void) const { return mEntryGroup; }
 
     private:
@@ -340,13 +362,14 @@ private:
     void        HandleGroupState(AvahiEntryGroup *aGroup, AvahiEntryGroupState aState);
     void        CallHostOrServiceCallback(AvahiEntryGroup *aGroup, otbrError aError);
 
-    static otbrError TxtListToAvahiStringList(const TxtList    &aTxtList,
+    static otbrError TxtDataToAvahiStringList(const TxtData    &aTxtData,
                                               AvahiStringList  *aBuffer,
                                               size_t            aBufferSize,
                                               AvahiStringList *&aHead);
 
     ServiceRegistration *FindServiceRegistration(const AvahiEntryGroup *aEntryGroup);
     HostRegistration    *FindHostRegistration(const AvahiEntryGroup *aEntryGroup);
+    KeyRegistration     *FindKeyRegistration(const AvahiEntryGroup *aEntryGroup);
 
     AvahiClient                 *mClient;
     std::unique_ptr<AvahiPoller> mPoller;

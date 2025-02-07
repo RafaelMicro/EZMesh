@@ -26,8 +26,8 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef POSIX_PLATFORM_RESOLVER_HPP_
-#define POSIX_PLATFORM_RESOLVER_HPP_
+#ifndef OT_POSIX_PLATFORM_RESOLVER_HPP_
+#define OT_POSIX_PLATFORM_RESOLVER_HPP_
 
 #include <openthread/openthread-system.h>
 #include <openthread/platform/dns.h>
@@ -35,21 +35,24 @@
 #include <arpa/inet.h>
 #include <sys/select.h>
 
+#include "logger.hpp"
+
 #if OPENTHREAD_CONFIG_DNS_UPSTREAM_QUERY_ENABLE
 
 namespace ot {
 namespace Posix {
 
-class Resolver
+class Resolver : public Logger<Resolver>
 {
 public:
+    static const char kLogModuleName[]; ///< Module name used for logging.
+
     constexpr static ssize_t kMaxDnsMessageSize           = 512;
     constexpr static ssize_t kMaxUpstreamTransactionCount = 16;
     constexpr static ssize_t kMaxUpstreamServerCount      = 3;
 
     /**
      * Initialize the upstream DNS resolver.
-     *
      */
     void Init(void);
 
@@ -58,7 +61,6 @@ public:
      *
      * @param[in] aTxn   A pointer to the OpenThread upstream DNS query transaction.
      * @param[in] aQuery A pointer to a message for the payload of the DNS query.
-     *
      */
     void Query(otPlatDnsUpstreamQuery *aTxn, const otMessage *aQuery);
 
@@ -66,29 +68,38 @@ public:
      * Cancels a upstream DNS query transaction.
      *
      * @param[in] aTxn   A pointer to the OpenThread upstream DNS query transaction.
-     *
      */
     void Cancel(otPlatDnsUpstreamQuery *aTxn);
 
     /**
      * Updates the file descriptor sets with file descriptors used by the radio driver.
      *
-     * @param[in,out]  aReadFdSet   A reference to the read file descriptors.
-     * @param[in,out]  aErrorFdSet  A reference to the error file descriptors.
-     * @param[in,out]  aMaxFd       A reference to the max file descriptor.
-     * @param[in,out]  aTimeout     A reference to the timeout.
-     *
+     * @param[in,out]  aContext  The mainloop context.
      */
     void UpdateFdSet(otSysMainloopContext &aContext);
 
     /**
      * Handles the result of select.
      *
-     * @param[in]  aReadFdSet   A reference to the read file descriptors.
-     * @param[in]  aErrorFdSet  A reference to the error file descriptors.
-     *
+     * @param[in]  aContext  The mainloop context.
      */
     void Process(const otSysMainloopContext &aContext);
+
+    /**
+     * Sets whether to retrieve upstream DNS servers from "resolv.conf".
+     *
+     * @param[in] aEnabled  TRUE if enable retrieving upstream DNS servers from "resolv.conf", FALSE otherwise.
+     */
+    void SetResolvConfEnabled(bool aEnabled) { mIsResolvConfEnabled = aEnabled; }
+
+    /**
+     * Sets the upstream DNS servers.
+     *
+     * @param[in] aUpstreamDnsServers  A pointer to the list of upstream DNS server addresses. Each address could be an
+     *                                 IPv6 address or an IPv4-mapped IPv6 address.
+     * @param[in] aNumServers          The number of upstream DNS servers.
+     */
+    void SetUpstreamDnsServers(const otIp6Address *aUpstreamDnsServers, int aNumServers);
 
 private:
     static constexpr uint64_t kDnsServerListNullCacheTimeoutMs = 1 * 60 * 1000;  // 1 minute
@@ -100,6 +111,8 @@ private:
         int                     mUdpFd;
     };
 
+    static int CreateUdpSocket(void);
+
     Transaction *GetTransaction(int aFd);
     Transaction *GetTransaction(otPlatDnsUpstreamQuery *aThreadTxn);
     Transaction *AllocateTransaction(otPlatDnsUpstreamQuery *aThreadTxn);
@@ -110,6 +123,7 @@ private:
     void TryRefreshDnsServerList(void);
     void LoadDnsServerListFromConf(void);
 
+    bool      mIsResolvConfEnabled    = true;
     int       mUpstreamDnsServerCount = 0;
     in_addr_t mUpstreamDnsServerList[kMaxUpstreamServerCount];
     uint64_t  mUpstreamDnsServerListFreshness = 0;
@@ -122,4 +136,4 @@ private:
 
 #endif // OPENTHREAD_CONFIG_DNS_UPSTREAM_QUERY_ENABLE
 
-#endif // POSIX_PLATFORM_RESOLVER_HPP_
+#endif // OT_POSIX_PLATFORM_RESOLVER_HPP_

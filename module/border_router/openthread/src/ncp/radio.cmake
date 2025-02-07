@@ -35,8 +35,6 @@ target_compile_definitions(openthread-rcp PRIVATE
 
 if (OT_NCP_SPI)
     target_compile_definitions(openthread-rcp PRIVATE OPENTHREAD_CONFIG_NCP_HDLC_ENABLE=0)
-else()
-    target_compile_definitions(openthread-rcp PRIVATE OPENTHREAD_CONFIG_NCP_HDLC_ENABLE=1)
 endif()
 
 target_compile_options(openthread-rcp PRIVATE

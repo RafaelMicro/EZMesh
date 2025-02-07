@@ -37,7 +37,6 @@
 
 #include <stdint.h>
 
-#include <mbedtls/ctr_drbg.h>
 #include <openthread/error.h>
 
 #ifdef __cplusplus
@@ -51,7 +50,6 @@ extern "C" {
  *   This module includes functions that generates cryptographic random numbers.
  *
  * @{
- *
  */
 
 /**
@@ -59,13 +57,11 @@ extern "C" {
  *
  * @param[out] aBuffer  A pointer to a buffer to fill with the random bytes.
  * @param[in]  aSize    Size of buffer (number of bytes to fill).
- *
  */
 otError otRandomCryptoFillBuffer(uint8_t *aBuffer, uint16_t aSize);
 
 /**
  * @}
- *
  */
 
 #ifdef __cplusplus

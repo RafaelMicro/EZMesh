@@ -33,12 +33,7 @@
 
 #include "openthread-core-config.h"
 
-#include <openthread/link.h>
-
-#include "common/as_core_type.hpp"
-#include "common/locator_getters.hpp"
-#include "mac/mac.hpp"
-#include "radio/radio.hpp"
+#include "instance/instance.hpp"
 
 using namespace ot;
 
@@ -83,6 +78,29 @@ otError otLinkSetChannel(otInstance *aInstance, uint8_t aChannel)
 exit:
     return error;
 }
+
+#if OPENTHREAD_CONFIG_WAKEUP_COORDINATOR_ENABLE || OPENTHREAD_CONFIG_WAKEUP_END_DEVICE_ENABLE
+uint8_t otLinkGetWakeupChannel(otInstance *aInstance)
+{
+    return AsCoreType(aInstance).Get<Mac::Mac>().GetWakeupChannel();
+}
+
+otError otLinkSetWakeupChannel(otInstance *aInstance, uint8_t aChannel)
+{
+    Error     error    = kErrorNone;
+    Instance &instance = AsCoreType(aInstance);
+
+    VerifyOrExit(instance.Get<Mle::MleRouter>().IsDisabled(), error = kErrorInvalidState);
+
+    SuccessOrExit(error = instance.Get<Mac::Mac>().SetWakeupChannel(aChannel));
+
+    instance.Get<MeshCoP::ActiveDatasetManager>().Clear();
+    instance.Get<MeshCoP::PendingDatasetManager>().Clear();
+
+exit:
+    return error;
+}
+#endif // OPENTHREAD_CONFIG_WAKEUP_COORDINATOR_ENABLE || OPENTHREAD_CONFIG_WAKEUP_END_DEVICE_ENABLE
 
 uint32_t otLinkGetSupportedChannelMask(otInstance *aInstance)
 {
@@ -164,6 +182,11 @@ otShortAddress otLinkGetShortAddress(otInstance *aInstance)
     return AsCoreType(aInstance).Get<Mac::Mac>().GetShortAddress();
 }
 
+otShortAddress otLinkGetAlternateShortAddress(otInstance *aInstance)
+{
+    return AsCoreType(aInstance).Get<Mac::Mac>().GetAlternateShortAddress();
+}
+
 uint8_t otLinkGetMaxFrameRetriesDirect(otInstance *aInstance)
 {
     return AsCoreType(aInstance).Get<Mac::Mac>().GetMaxFrameRetriesDirect();
@@ -187,6 +210,11 @@ void otLinkSetMaxFrameRetriesIndirect(otInstance *aInstance, uint8_t aMaxFrameRe
 }
 
 #endif // OPENTHREAD_FTD
+
+uint32_t otLinkGetFrameCounter(otInstance *aInstance)
+{
+    return AsCoreType(aInstance).Get<Mac::SubMac>().GetFrameCounter();
+}
 
 #if OPENTHREAD_CONFIG_MAC_FILTER_ENABLE
 
@@ -395,9 +423,9 @@ bool otLinkIsCslEnabled(otInstance *aInstance) { return AsCoreType(aInstance).Ge
 
 bool otLinkIsCslSupported(otInstance *aInstance) { return AsCoreType(aInstance).Get<Mac::Mac>().IsCslSupported(); }
 
-uint8_t otLinkCslGetChannel(otInstance *aInstance) { return AsCoreType(aInstance).Get<Mac::Mac>().GetCslChannel(); }
+uint8_t otLinkGetCslChannel(otInstance *aInstance) { return AsCoreType(aInstance).Get<Mac::Mac>().GetCslChannel(); }
 
-otError otLinkCslSetChannel(otInstance *aInstance, uint8_t aChannel)
+otError otLinkSetCslChannel(otInstance *aInstance, uint8_t aChannel)
 {
     Error error = kErrorNone;
 
@@ -409,25 +437,39 @@ exit:
     return error;
 }
 
-uint16_t otLinkCslGetPeriod(otInstance *aInstance) { return AsCoreType(aInstance).Get<Mac::Mac>().GetCslPeriod(); }
-
-otError otLinkCslSetPeriod(otInstance *aInstance, uint16_t aPeriod)
+uint32_t otLinkGetCslPeriod(otInstance *aInstance)
 {
-    Error error = kErrorNone;
+    return Mac::Mac::CslPeriodToUsec(AsCoreType(aInstance).Get<Mac::Mac>().GetCslPeriod());
+}
 
-    VerifyOrExit((aPeriod == 0 || kMinCslPeriod <= aPeriod), error = kErrorInvalidArgs);
-    AsCoreType(aInstance).Get<Mac::Mac>().SetCslPeriod(aPeriod);
+otError otLinkSetCslPeriod(otInstance *aInstance, uint32_t aPeriod)
+{
+    Error    error = kErrorNone;
+    uint16_t periodInTenSymbolsUnit;
+
+    if (aPeriod == 0)
+    {
+        periodInTenSymbolsUnit = 0;
+    }
+    else
+    {
+        VerifyOrExit((aPeriod % kUsPerTenSymbols) == 0, error = kErrorInvalidArgs);
+        periodInTenSymbolsUnit = ClampToUint16(aPeriod / kUsPerTenSymbols);
+        VerifyOrExit(periodInTenSymbolsUnit >= kMinCslPeriod, error = kErrorInvalidArgs);
+    }
+
+    AsCoreType(aInstance).Get<Mac::Mac>().SetCslPeriod(periodInTenSymbolsUnit);
 
 exit:
     return error;
 }
 
-uint32_t otLinkCslGetTimeout(otInstance *aInstance)
+uint32_t otLinkGetCslTimeout(otInstance *aInstance)
 {
     return AsCoreType(aInstance).Get<Mle::MleRouter>().GetCslTimeout();
 }
 
-otError otLinkCslSetTimeout(otInstance *aInstance, uint32_t aTimeout)
+otError otLinkSetCslTimeout(otInstance *aInstance, uint32_t aTimeout)
 {
     Error error = kErrorNone;
 
@@ -446,3 +488,46 @@ otError otLinkSendEmptyData(otInstance *aInstance)
     return AsCoreType(aInstance).Get<MeshForwarder>().SendEmptyMessage();
 }
 #endif
+
+otError otLinkSetRegion(otInstance *aInstance, uint16_t aRegionCode)
+{
+    return AsCoreType(aInstance).Get<Mac::Mac>().SetRegion(aRegionCode);
+}
+
+otError otLinkGetRegion(otInstance *aInstance, uint16_t *aRegionCode)
+{
+    Error error;
+
+    if (aRegionCode == nullptr)
+    {
+        error = kErrorInvalidArgs;
+    }
+    else
+    {
+        error = AsCoreType(aInstance).Get<Mac::Mac>().GetRegion(*aRegionCode);
+    }
+
+    return error;
+}
+
+#if OPENTHREAD_CONFIG_WAKEUP_END_DEVICE_ENABLE
+otError otLinkSetWakeUpListenEnabled(otInstance *aInstance, bool aEnable)
+{
+    return AsCoreType(aInstance).Get<Mac::Mac>().SetWakeupListenEnabled(aEnable);
+}
+
+bool otLinkIsWakeupListenEnabled(otInstance *aInstance)
+{
+    return AsCoreType(aInstance).Get<Mac::Mac>().IsWakeupListenEnabled();
+}
+
+void otLinkGetWakeupListenParameters(otInstance *aInstance, uint32_t *aInterval, uint32_t *aDuration)
+{
+    AsCoreType(aInstance).Get<Mac::Mac>().GetWakeupListenParameters(*aInterval, *aDuration);
+}
+
+otError otLinkSetWakeupListenParameters(otInstance *aInstance, uint32_t aInterval, uint32_t aDuration)
+{
+    return AsCoreType(aInstance).Get<Mac::Mac>().SetWakeupListenParameters(aInterval, aDuration);
+}
+#endif // OPENTHREAD_CONFIG_WAKEUP_END_DEVICE_ENABLE

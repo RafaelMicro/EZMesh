@@ -33,17 +33,7 @@
 
 #include "thread_netif.hpp"
 
-#include "common/code_utils.hpp"
-#include "common/encoding.hpp"
-#include "common/instance.hpp"
-#include "common/locator_getters.hpp"
-#include "common/message.hpp"
-#include "net/ip6.hpp"
-#include "net/netif.hpp"
-#include "net/udp6.hpp"
-#include "thread/mle.hpp"
-#include "thread/thread_tlvs.hpp"
-#include "thread/uri_paths.hpp"
+#include "instance/instance.hpp"
 
 namespace ot {
 
@@ -96,9 +86,6 @@ void ThreadNetif::Down(void)
 #endif
 #if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
     Get<Dns::ServiceDiscovery::Server>().Stop();
-#endif
-#if OPENTHREAD_CONFIG_DTLS_ENABLE
-    Get<Tmf::SecureAgent>().Stop();
 #endif
     IgnoreError(Get<Tmf::Agent>().Stop());
     IgnoreError(Get<Mle::MleRouter>().Disable());

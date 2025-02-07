@@ -94,7 +94,7 @@ template <> otError Dns::Process<Cmd("compression")>(Arg aArgs[])
     {
         bool enable;
 
-        SuccessOrExit(error = Interpreter::ParseEnableOrDisable(aArgs[0], enable));
+        SuccessOrExit(error = ParseEnableOrDisable(aArgs[0], enable));
         otDnsSetNameCompressionEnabled(enable);
     }
 
@@ -161,6 +161,9 @@ template <> otError Dns::Process<Cmd("config")>(Arg aArgs[])
      * ResponseTimeout: 5000 ms
      * MaxTxAttempts: 2
      * RecursionDesired: no
+     * ServiceMode: srv_txt_opt
+     * Nat64Mode: allow
+     * TransportProtocol: udp
      * Done
      * @endcode
      * @code
@@ -170,16 +173,20 @@ template <> otError Dns::Process<Cmd("config")>(Arg aArgs[])
      * @code
      * dns config
      * Server: [fd00:0:0:0:0:0:0:2]:53
-     * ResponseTimeout: 3000 ms
+     * ResponseTimeout: 6000 ms
      * MaxTxAttempts: 3
      * RecursionDesired: yes
+     * ServiceMode: srv_txt_opt
+     * Nat64Mode: allow
+     * TransportProtocol: udp
      * Done
      * @endcode
      * @par api_copy
      * #otDnsClientSetDefaultConfig
      * @cparam dns config [@ca{dns-server-IP}] [@ca{dns-server-port}] <!--
      * -->                [@ca{response-timeout-ms}] [@ca{max-tx-attempts}] <!--
-     * -->                [@ca{recursion-desired-boolean}] [@ca{service-mode}]
+     * -->                [@ca{recursion-desired-boolean}] [@ca{service-mode}] <!--
+     * -->                [@ca{protocol}]
      * @par
      * We can leave some of the fields as unspecified (or use value zero). The
      * unspecified fields are replaced by the corresponding OT config option
@@ -405,7 +412,10 @@ exit:
 
 //----------------------------------------------------------------------------------------------------------------------
 
-void Dns::OutputResult(otError aError) { Interpreter::GetInterpreter().OutputResult(aError); }
+void Dns::OutputResult(otError aError)
+{
+    Interpreter::GetInterpreter().OutputResult(aError);
+}
 
 otError Dns::GetDnsConfig(Arg aArgs[], otDnsQueryConfig *&aConfig)
 {
@@ -416,15 +426,14 @@ otError Dns::GetDnsConfig(Arg aArgs[], otDnsQueryConfig *&aConfig)
 
     otError error = OT_ERROR_NONE;
     bool    recursionDesired;
-    bool    nat64SynthesizedAddress;
+    bool    nat64Synth;
 
-    memset(aConfig, 0, sizeof(otDnsQueryConfig));
+    ClearAllBytes(*aConfig);
 
     VerifyOrExit(!aArgs[0].IsEmpty(), aConfig = nullptr);
 
-    SuccessOrExit(error = Interpreter::ParseToIp6Address(GetInstancePtr(), aArgs[0], aConfig->mServerSockAddr.mAddress,
-                                                         nat64SynthesizedAddress));
-    if (nat64SynthesizedAddress)
+    SuccessOrExit(error = ParseToIp6Address(GetInstancePtr(), aArgs[0], aConfig->mServerSockAddr.mAddress, nat64Synth));
+    if (nat64Synth)
     {
         OutputFormat("Synthesized IPv6 DNS server address: ");
         OutputIp6AddressLine(aConfig->mServerSockAddr.mAddress);
@@ -496,7 +505,7 @@ otError Dns::ParseDnsServiceMode(const Arg &aArg, otDnsServiceMode &aMode) const
         ExitNow();
     }
 
-    for (uint8_t index = 0; index < OT_ARRAY_LENGTH(kServiceModeStrings); index++)
+    for (size_t index = 0; index < OT_ARRAY_LENGTH(kServiceModeStrings); index++)
     {
         if (aArg == kServiceModeStrings[index])
         {
@@ -679,8 +688,7 @@ template <> otError Dns::Process<Cmd("server")>(Arg aArgs[])
          * @par api_copy
          * #otDnssdUpstreamQuerySetEnabled
          */
-        error = Interpreter::GetInterpreter().ProcessEnableDisable(aArgs + 1, otDnssdUpstreamQueryIsEnabled,
-                                                                   otDnssdUpstreamQuerySetEnabled);
+        error = ProcessEnableDisable(aArgs + 1, otDnssdUpstreamQueryIsEnabled, otDnssdUpstreamQuerySetEnabled);
     }
 #endif // OPENTHREAD_CONFIG_DNS_UPSTREAM_QUERY_ENABLE
     else
@@ -710,8 +718,7 @@ otError Dns::Process(Arg aArgs[])
         CmdEntry("compression"),
 #endif
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
-        CmdEntry("config"),
-        CmdEntry("resolve"),
+        CmdEntry("config"),      CmdEntry("resolve"),
 #if OPENTHREAD_CONFIG_DNS_CLIENT_NAT64_ENABLE
         CmdEntry("resolve4"),
 #endif
@@ -720,8 +727,7 @@ otError Dns::Process(Arg aArgs[])
         CmdEntry("server"),
 #endif
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE && OPENTHREAD_CONFIG_DNS_CLIENT_SERVICE_DISCOVERY_ENABLE
-        CmdEntry("service"),
-        CmdEntry("servicehost"),
+        CmdEntry("service"),     CmdEntry("servicehost"),
 #endif
     };
 

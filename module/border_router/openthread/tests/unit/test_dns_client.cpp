@@ -39,9 +39,9 @@
 
 #include "common/arg_macros.hpp"
 #include "common/array.hpp"
-#include "common/instance.hpp"
 #include "common/string.hpp"
 #include "common/time.hpp"
+#include "instance/instance.hpp"
 
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE && OPENTHREAD_CONFIG_DNS_CLIENT_SERVICE_DISCOVERY_ENABLE &&                 \
     OPENTHREAD_CONFIG_DNS_CLIENT_DEFAULT_SERVER_ADDRESS_AUTO_SET_ENABLE && OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE && \
@@ -84,7 +84,10 @@ void AdvanceTime(uint32_t aDuration);
 
 extern "C" {
 
-otRadioCaps otPlatRadioGetCaps(otInstance *) { return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF; }
+otRadioCaps otPlatRadioGetCaps(otInstance *)
+{
+    return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF;
+}
 
 otError otPlatRadioTransmit(otInstance *, otRadioFrame *)
 {
@@ -93,12 +96,18 @@ otError otPlatRadioTransmit(otInstance *, otRadioFrame *)
     return OT_ERROR_NONE;
 }
 
-otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *) { return &sRadioTxFrame; }
+otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *)
+{
+    return &sRadioTxFrame;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // `otPlatAlaram`
 
-void otPlatAlarmMilliStop(otInstance *) { sAlarmOn = false; }
+void otPlatAlarmMilliStop(otInstance *)
+{
+    sAlarmOn = false;
+}
 
 void otPlatAlarmMilliStartAt(otInstance *, uint32_t aT0, uint32_t aDt)
 {
@@ -106,7 +115,10 @@ void otPlatAlarmMilliStartAt(otInstance *, uint32_t aT0, uint32_t aDt)
     sAlarmTime = aT0 + aDt;
 }
 
-uint32_t otPlatAlarmMilliGetNow(void) { return sNow; }
+uint32_t otPlatAlarmMilliGetNow(void)
+{
+    return sNow;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 

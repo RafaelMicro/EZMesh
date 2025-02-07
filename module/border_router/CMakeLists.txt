@@ -4,7 +4,10 @@
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME ez-otbr)
 
 # ot-br-posix unfortunately has a variable set but not used, making our compiler fail because of warnings as errors.
-add_compile_options(-Wno-unused-but-set-variable -DOTBR_ENABLE_PUBLISH_MESHCOP_BA_ID=1)
+add_compile_options(-Wno-unused-but-set-variable 
+  -DOTBR_ENABLE_PUBLISH_MESHCOP_BA_ID=1
+  -DOPENTHREAD_CONFIG_BORDER_AGENT_ENABLE=1
+)
 
 set(ot-br-posix_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ot-br-posix)
 set(openthread_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/openthread)
@@ -23,13 +26,13 @@ file(COPY ${POSIX_CONFIG_HEADERS} DESTINATION ${ot-br-posix_SOURCE_DIR}/third_pa
 
 # Compilation settings defined
 set(OT_CONFIG openthread-core-rafael-posix-config.h CACHE STRING "Project-specific openthread config file")
-set(OT_MULTIPAN_RCP ON CACHE BOOL "enable multi-PAN RCP")
-set(OT_POSIX_CONFIG_RCP_BUS "EZMESH" CACHE STRING "RCP bus type")
+# set(OT_MULTIPAN_RCP ON CACHE BOOL "enable multi-PAN RCP")
+# set(OT_POSIX_CONFIG_RCP_BUS "EZMESH" CACHE STRING "RCP bus type")
 set(OT_DIAGNOSTIC ON CACHE BOOL "enable diagnostic support")
 set(OT_PACKAGE_NAME "OPENTHREAD" CACHE STRING "OpenThread Package Name")
 set(OT_PACKAGE_VERSION "8bc2504" CACHE STRING "OpenThread Package Version")
 set(OT_FULL_LOGS OFF CACHE BOOL "Enable debug level logging" FORCE)
-
+set(OT_POSIX_RCP_VENDOR_BUS ON CACHE BOOL "enable RCP vendor bus")
 
 if(NOT BUILD_TESTING)
   set(ENABLE_CJSON_TEST OFF CACHE BOOL "ENABLE CJSON tests")

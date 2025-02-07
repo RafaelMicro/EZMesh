@@ -38,9 +38,9 @@
 
 #include "common/arg_macros.hpp"
 #include "common/array.hpp"
-#include "common/instance.hpp"
 #include "common/string.hpp"
 #include "common/time.hpp"
+#include "instance/instance.hpp"
 
 #if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE && OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE && \
     !OPENTHREAD_CONFIG_TIME_SYNC_ENABLE && !OPENTHREAD_PLATFORM_POSIX
@@ -81,7 +81,10 @@ void AdvanceTime(uint32_t aDuration);
 
 extern "C" {
 
-otRadioCaps otPlatRadioGetCaps(otInstance *) { return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF; }
+otRadioCaps otPlatRadioGetCaps(otInstance *)
+{
+    return OT_RADIO_CAPS_ACK_TIMEOUT | OT_RADIO_CAPS_CSMA_BACKOFF;
+}
 
 otError otPlatRadioTransmit(otInstance *, otRadioFrame *)
 {
@@ -90,12 +93,18 @@ otError otPlatRadioTransmit(otInstance *, otRadioFrame *)
     return OT_ERROR_NONE;
 }
 
-otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *) { return &sRadioTxFrame; }
+otRadioFrame *otPlatRadioGetTransmitBuffer(otInstance *)
+{
+    return &sRadioTxFrame;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 // `otPlatAlaram`
 
-void otPlatAlarmMilliStop(otInstance *) { sAlarmOn = false; }
+void otPlatAlarmMilliStop(otInstance *)
+{
+    sAlarmOn = false;
+}
 
 void otPlatAlarmMilliStartAt(otInstance *, uint32_t aT0, uint32_t aDt)
 {
@@ -103,7 +112,10 @@ void otPlatAlarmMilliStartAt(otInstance *, uint32_t aT0, uint32_t aDt)
     sAlarmTime = aT0 + aDt;
 }
 
-uint32_t otPlatAlarmMilliGetNow(void) { return sNow; }
+uint32_t otPlatAlarmMilliGetNow(void)
+{
+    return sNow;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -306,9 +318,9 @@ void PrepareService1(Srp::Client::Service &aService)
     static const char          kTxtKey3[]       = "D";
     static const uint8_t       kTxtValue3[]     = {0};
     static const otDnsTxtEntry kTxtEntries[]    = {
-           {kTxtKey1, kTxtValue1, sizeof(kTxtValue1)},
-           {kTxtKey2, kTxtValue2, sizeof(kTxtValue2)},
-           {kTxtKey3, kTxtValue3, sizeof(kTxtValue3)},
+        {kTxtKey1, kTxtValue1, sizeof(kTxtValue1)},
+        {kTxtKey2, kTxtValue2, sizeof(kTxtValue2)},
+        {kTxtKey3, kTxtValue3, sizeof(kTxtValue3)},
     };
 
     memset(&aService, 0, sizeof(aService));

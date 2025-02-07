@@ -35,11 +35,9 @@
 
 #include "platform-posix.h"
 
-#include <assert.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -48,69 +46,97 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <openthread/logging.h>
+
 #include "common/code_utils.hpp"
-#include "common/logging.hpp"
 #include "common/encoding.hpp"
 #include "lib/spinel/spinel.h"
 
-#if OPENTHREAD_POSIX_CONFIG_RCP_BUS == OT_POSIX_RCP_BUS_EZMESH
-
-using ot::Spinel::SpinelInterface;
+#if OPENTHREAD_POSIX_CONFIG_SPINEL_VENDOR_INTERFACE_ENABLE
 
 namespace ot {
 namespace Posix {
 
+const char Ezmesh::kLogModuleName[] = "EZMesh";
+
 bool Ezmesh::sCpcResetReq = false;
 
-Ezmesh::Ezmesh(SpinelInterface::ReceiveFrameCallback aCallback,
-                             void *                                aCallbackContext,
-                             SpinelInterface::RxFrameBuffer &      aFrameBuffer)
-    : mReceiveFrameCallback(aCallback)
-    , mReceiveFrameContext(aCallbackContext)
-    , mReceiveFrameBuffer(aFrameBuffer)
+Ezmesh::Ezmesh(const Url::Url &aRadioUrl)
+    : mReceiveFrameCallback(nullptr)
+    , mReceiveFrameContext(nullptr)
+    , mReceiveFrameBuffer(nullptr)
     , mSockFd(-1)
+    , mBaudRate(0)
+    , mHdlcDecoder()
+    , mRadioUrl(aRadioUrl)
 {
+    const char *value;
+    int         ret = 0;
+
+    // VerifyOrExit(mSockFd == -1, error = OT_ERROR_ALREADY);
     memset(&mInterfaceMetrics, 0, sizeof(mInterfaceMetrics));
-    mInterfaceMetrics.mRcpInterfaceType = OT_POSIX_RCP_BUS_EZMESH;
-    mCpcBusSpeed = kCpcBusSpeed;
-}
-
-void Ezmesh::OnRcpReset(void)
-{
-}
-
-otError Ezmesh::Init(const Url::Url &aRadioUrl)
-{
-    otError         error = OT_ERROR_NONE;
-    const char *    value;
-    int ret = 0;
-    OT_UNUSED_VARIABLE(aRadioUrl);
-
-    VerifyOrExit(mSockFd == -1, error = OT_ERROR_ALREADY);
-    otLogWarnPlat("%s", aRadioUrl.GetPath());
+    mInterfaceMetrics.mRcpInterfaceType = kSpinelInterfaceTypeVendor;
+    otLogInfoPlat("%s", aRadioUrl.GetPath());
     ret = libezmesh_init(&mHandle, aRadioUrl.GetPath(), HandleSecondaryReset);
     if (ret != 0)
     {
-      otLogCritPlat("%d EZMESH init failed. Ensure radio-url argument has the form 'spinel+ezmesh://ezmeshd_0?iid=<1..3>'", ret);
-      DieNow(OT_EXIT_FAILURE);
+        otLogCritPlat(
+            "%d EZMESH init failed. Ensure radio-url argument has the form 'spinel+ezmesh://ezmeshd_0?iid=<1..3>'",
+            ret);
+        DieNow(OT_EXIT_FAILURE);
     }
-
     mSockFd = libezmesh_open_ep(mHandle, &mEndpoint, mId, 1);
-
     if (mSockFd < 0)
     {
-      otLogCritPlat("EZMESH endpoint open failed");
-      error = OT_ERROR_FAILED;
+        otLogCritPlat("EZMESH endpoint open failed");
     }
 
     if ((value = aRadioUrl.GetValue("ezmesh-bus-speed")))
     {
-        mCpcBusSpeed = static_cast<uint32_t>(atoi(value));;
+        mBaudRate = static_cast<uint32_t>(atoi(value));
     }
 
-    otLogCritPlat("mCpcBusSpeed = %d", mCpcBusSpeed);
+    otLogInfoPlat("mBaudRate = %d", mBaudRate);
+}
+
+void Ezmesh::HandleHdlcFrame(void *aContext, otError aError)
+{
+    static_cast<Ezmesh *>(aContext)->HandleHdlcFrame(aError);
+}
+
+void Ezmesh::HandleHdlcFrame(otError aError)
+{
+    VerifyOrExit((mReceiveFrameCallback != nullptr) && (mReceiveFrameBuffer != nullptr));
+
+    mInterfaceMetrics.mTransferredFrameCount++;
+
+    if (aError == OT_ERROR_NONE)
+    {
+        mInterfaceMetrics.mRxFrameCount++;
+        mInterfaceMetrics.mRxFrameByteCount += mReceiveFrameBuffer->GetLength();
+        mInterfaceMetrics.mTransferredValidFrameCount++;
+        mReceiveFrameCallback(mReceiveFrameContext);
+    }
+    else
+    {
+        mInterfaceMetrics.mTransferredGarbageFrameCount++;
+        mReceiveFrameBuffer->DiscardFrame();
+        LogWarn("Error decoding hdlc frame: %s", otThreadErrorToString(aError));
+    }
 
 exit:
+    return;
+}
+
+otError Ezmesh::Init(ReceiveFrameCallback aCallback, void *aCallbackContext, RxFrameBuffer &aFrameBuffer)
+{
+    otError error = OT_ERROR_NONE;
+
+    mHdlcDecoder.Init(aFrameBuffer, HandleHdlcFrame, this);
+    mReceiveFrameCallback = aCallback;
+    mReceiveFrameContext  = aCallbackContext;
+    mReceiveFrameBuffer   = &aFrameBuffer;
+
     return error;
 }
 
@@ -128,7 +154,7 @@ void Ezmesh::Deinit(void)
 {
     VerifyOrExit(mEndpoint.ptr != nullptr);
 
-    //VerifyOrExit(0 == libezmesh_close_ep(&mEndpoint), perror("close ezmesh endpoint"));
+    // VerifyOrExit(0 == libezmesh_close_ep(&mEndpoint), perror("close ezmesh endpoint"));
 
 exit:
     return;
@@ -136,31 +162,32 @@ exit:
 
 void Ezmesh::Read(uint64_t aTimeoutUs)
 {
-    uint8_t buffer[kMaxFrameSize];
+    uint8_t  buffer[kMaxFrameSize];
     uint8_t *ptr = buffer;
-    ssize_t bytesRead;
-    bool block = false;
-    int  ret = 0;
+    ssize_t  bytesRead;
+    bool     block = false;
+    int      ret   = 0;
 
-    if(aTimeoutUs > 0)
+    otLogInfoPlat("timeout = %ld", aTimeoutUs);
+
+    if (aTimeoutUs > 0)
     {
         ezmesh_timeval_t timeout;
 
-        timeout.seconds = static_cast<int>(aTimeoutUs / US_PER_S);
-        timeout.microseconds = static_cast<int>(aTimeoutUs % US_PER_S);
+        timeout.seconds      = static_cast<int>(aTimeoutUs / OT_US_PER_S);
+        timeout.microseconds = static_cast<int>(aTimeoutUs % OT_US_PER_S);
 
         block = true;
-        ret = libezmesh_set_ep_option(mEndpoint, OPTION_BLOCKING, &block, sizeof(block));
-        //OT_ASSERT(ret == 0);
+        ret   = libezmesh_set_ep_option(mEndpoint, OPTION_BLOCKING, &block, sizeof(block));
+        // OT_ASSERT(ret == 0);
         ret = libezmesh_set_ep_option(mEndpoint, OPTION_RX_TIMEOUT, &timeout, sizeof(timeout));
-        //OT_ASSERT(ret == 0);
+        // OT_ASSERT(ret == 0);
     }
     else
     {
         ret = libezmesh_set_ep_option(mEndpoint, OPTION_BLOCKING, &block, sizeof(block));
-        //OT_ASSERT(ret == 0);
+        // OT_ASSERT(ret == 0);
     }
-
     bytesRead = libezmesh_read_ep(mEndpoint, buffer, sizeof(buffer), EP_READ_FLAG_NONE);
 
     if (bytesRead > 0)
@@ -172,7 +199,7 @@ void Ezmesh::Read(uint64_t aTimeoutUs)
             {
                 break;
             }
-            uint16_t bufferLen = Encoding::BigEndian::ReadUint16(ptr);
+            uint16_t bufferLen = BigEndian::ReadUint16(ptr);
             ptr += 2;
             bytesRead -= 2;
             if (bytesRead < bufferLen)
@@ -181,9 +208,9 @@ void Ezmesh::Read(uint64_t aTimeoutUs)
             }
             for (uint16_t i = 0; i < bufferLen; i++)
             {
-                if (!mReceiveFrameBuffer.CanWrite(1) || (mReceiveFrameBuffer.WriteByte(*(ptr++)) != OT_ERROR_NONE))
+                if (!mReceiveFrameBuffer->CanWrite(1) || (mReceiveFrameBuffer->WriteByte(*(ptr++)) != OT_ERROR_NONE))
                 {
-                    mReceiveFrameBuffer.DiscardFrame();
+                    mReceiveFrameBuffer->DiscardFrame();
                     return;
                 }
             }
@@ -202,12 +229,25 @@ void Ezmesh::Read(uint64_t aTimeoutUs)
     }
 }
 
+void Ezmesh::Decode(const uint8_t *aBuffer, uint16_t aLength)
+{
+    mHdlcDecoder.Decode(aBuffer, aLength);
+}
+
 otError Ezmesh::SendFrame(const uint8_t *aFrame, uint16_t aLength)
 {
-    otError error;
+    otError                            error;
+    Spinel::FrameBuffer<kMaxFrameSize> encoderBuffer;
+    // Hdlc::Encoder                      hdlcEncoder(encoderBuffer);
 
     CheckAndReInitCpc();
+
+    // SuccessOrExit(error = hdlcEncoder.BeginFrame());
+    // SuccessOrExit(error = hdlcEncoder.Encode(aFrame, aLength));
+    // SuccessOrExit(error = hdlcEncoder.EndFrame());
+
     error = Write(aFrame, aLength);
+
     return error;
 }
 
@@ -217,13 +257,12 @@ otError Ezmesh::Write(const uint8_t *aFrame, uint16_t aLength)
 
     // We are catching the SPINEL reset command and returning
     // a SPINEL reset response immediately
-    if(SPINEL_HEADER_GET_TID(*aFrame) == 0 &&
-        *(aFrame + 1) == SPINEL_CMD_RESET)
+    if (SPINEL_HEADER_GET_TID(*aFrame) == 0 && *(aFrame + 1) == SPINEL_CMD_RESET)
     {
         SendResetResponse();
         return error;
     }
-
+    otDumpInfoPlat("W", aFrame, aLength);
     while (aLength)
     {
         ssize_t bytesWritten = libezmesh_write_ep(mEndpoint, aFrame, aLength, EP_WRITE_FLAG_NON_BLOCKING);
@@ -240,9 +279,9 @@ otError Ezmesh::Write(const uint8_t *aFrame, uint16_t aLength)
         else if (bytesWritten < 0)
         {
             VerifyOrExit((bytesWritten == -EPIPE), SetCpcResetReq(true));
-            VerifyOrDie((bytesWritten == -EAGAIN) || (bytesWritten == -EWOULDBLOCK) || (bytesWritten == -EINTR), OT_EXIT_ERROR_ERRNO);
+            VerifyOrDie((bytesWritten == -EAGAIN) || (bytesWritten == -EWOULDBLOCK) || (bytesWritten == -EINTR),
+                        OT_EXIT_ERROR_ERRNO);
         }
-
     }
 
 exit:
@@ -251,7 +290,7 @@ exit:
 
 otError Ezmesh::WaitForFrame(uint64_t aTimeoutUs)
 {
-    otError        error = OT_ERROR_NONE;
+    otError error = OT_ERROR_NONE;
 
     CheckAndReInitCpc();
     Read(aTimeoutUs);
@@ -270,7 +309,7 @@ void Ezmesh::UpdateFdSet(void *aMainloopContext)
     if (context->mMaxFd < mSockFd)
     {
         context->mMaxFd = mSockFd;
-    }	
+    }
 }
 
 void Ezmesh::Process(const void *aMainloopContext)
@@ -284,34 +323,34 @@ void Ezmesh::CheckAndReInitCpc(void)
 {
     int result;
     int attempts = 0;
-    
-    //Check if EZMESH needs to be restarted
+
+    // Check if EZMESH needs to be restarted
     VerifyOrExit(sCpcResetReq);
-    
+
     do
     {
-        //Add some delay before attempting to restart
+        // Add some delay before attempting to restart
         usleep(kMaxSleepDuration);
-        //Try to restart EZMESH
+        // Try to restart EZMESH
         result = libezmesh_reset(&mHandle);
-        //Mark how many times the restart was attempted
+        // Mark how many times the restart was attempted
         attempts++;
-        //Continue to try and restore EZMESH communication until we
-        //have exhausted the retries or restart was successful
-    }   while ((result != 0) && (attempts < kMaxRestartAttempts));
+        // Continue to try and restore EZMESH communication until we
+        // have exhausted the retries or restart was successful
+    } while ((result != 0) && (attempts < kMaxRestartAttempts));
 
-    //If the restart failed, exit.
+    // If the restart failed, exit.
     VerifyOrDie(result == 0, OT_EXIT_ERROR_ERRNO);
 
-    //Reopen the endpoint for communication
+    // Reopen the endpoint for communication
     mSockFd = libezmesh_open_ep(mHandle, &mEndpoint, mId, 1);
 
-    //If the restart failed, exit.
+    // If the restart failed, exit.
     VerifyOrDie(mSockFd >= 0, OT_EXIT_ERROR_ERRNO);
 
     otLogCritPlat("Restarted EZMESH successfully");
 
-    //Clear the flag
+    // Clear the flag
     SetCpcResetReq(false);
 
 exit:
@@ -320,14 +359,13 @@ exit:
 
 void Ezmesh::SendResetResponse(void)
 {
-
     // Put EZMESH Reset call here
 
-    for(int i=0; i<kResetCMDSize; ++i)
+    for (int i = 0; i < kResetCMDSize; ++i)
     {
-        if(mReceiveFrameBuffer.CanWrite(sizeof(uint8_t)))
+        if (mReceiveFrameBuffer->CanWrite(sizeof(uint8_t)))
         {
-            IgnoreError(mReceiveFrameBuffer.WriteByte(mResetResponse[i]));
+            IgnoreError(mReceiveFrameBuffer->WriteByte(mResetResponse[i]));
         }
     }
 
