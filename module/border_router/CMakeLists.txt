@@ -4,13 +4,12 @@
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME ez-otbr)
 
 # ot-br-posix unfortunately has a variable set but not used, making our compiler fail because of warnings as errors.
-add_compile_options(-Wno-unused-but-set-variable 
-  -DOTBR_ENABLE_PUBLISH_MESHCOP_BA_ID=1
-  -DOPENTHREAD_CONFIG_BORDER_AGENT_ENABLE=1
-)
+add_compile_options(-Wno-unused-but-set-variable)
 
 set(ot-br-posix_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ot-br-posix)
 set(openthread_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/openthread)
+
+set(Protobuf_PROTOC_EXECUTABLE "/usr/local/bin/protoc")
 
 if(${CONFIG_USE_CROSS_COMPILER})
 include_directories(
@@ -31,7 +30,7 @@ set(OT_CONFIG openthread-core-rafael-posix-config.h CACHE STRING "Project-specif
 set(OT_DIAGNOSTIC ON CACHE BOOL "enable diagnostic support")
 set(OT_PACKAGE_NAME "OPENTHREAD" CACHE STRING "OpenThread Package Name")
 set(OT_PACKAGE_VERSION "8bc2504" CACHE STRING "OpenThread Package Version")
-set(OT_FULL_LOGS OFF CACHE BOOL "Enable debug level logging" FORCE)
+set(OT_FULL_LOGS ON CACHE BOOL "Enable debug level logging" FORCE)
 set(OT_POSIX_RCP_VENDOR_BUS ON CACHE BOOL "enable RCP vendor bus")
 
 if(NOT BUILD_TESTING)
@@ -39,7 +38,7 @@ if(NOT BUILD_TESTING)
   set(ENABLE_TESTING OFF CACHE BOOL "Build mbed TLS tests.")
 endif()
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
+#include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
 add_subdirectory(${ot-br-posix_SOURCE_DIR})
 
 ext_install("DIRECTORY" ${ot-br-posix_SOURCE_DIR}/script share/otbr ez-otbr)

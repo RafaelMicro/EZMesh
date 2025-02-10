@@ -34,7 +34,6 @@
 #include "border_router/routing_manager.hpp"
 
 #if OPENTHREAD_CONFIG_BORDER_ROUTING_ENABLE
-
 #include <string.h>
 
 #include <openthread/border_router.h>

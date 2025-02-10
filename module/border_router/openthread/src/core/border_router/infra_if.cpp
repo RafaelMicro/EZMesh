@@ -110,7 +110,7 @@ Error InfraIf::DiscoverNat64Prefix(void) const
 {
     OT_ASSERT(mInitialized);
 
-#if OPENTHREAD_CONFIG_NAT64_BORDER_ROUTING_ENABLE
+#if OPENTHREAD_CONFIG_NAT64_BORDER_ROUTING_ENABLE && OPENTHREAD_POSIX_CONFIG_NAT64_AIL_PREFIX_ENABLE
     return otPlatInfraIfDiscoverNat64Prefix(mIfIndex);
 #else
     return kErrorNotImplemented;

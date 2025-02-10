@@ -210,7 +210,7 @@
  *
  */
 #undef OPENTHREAD_CONFIG_LOG_LEVEL
-#define OPENTHREAD_CONFIG_LOG_LEVEL OT_LOG_LEVEL_NONE
+#define OPENTHREAD_CONFIG_LOG_LEVEL OT_LOG_LEVEL_DEBG
 
 /**
  * Define to prepend the log level to all log messages.
@@ -268,6 +268,9 @@
 #define OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE 1
 #define OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE 1
 #define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE 1
+
+#undef OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE
+#define OPENTHREAD_CONFIG_BACKBONE_ROUTER_DUA_NDPROXYING_ENABLE 1
 
 /******************************************************************************
  * Include OpenThread project's POSIX defaults

@@ -39,18 +39,22 @@ if(OT_POSIX_RCP_VENDOR_BUS)
     add_library(rcp-vendor-intf ${OT_POSIX_CONFIG_RCP_VENDOR_INTERFACE})
 
     target_link_libraries(rcp-vendor-intf PUBLIC ot-posix-config)
+    get_target_property(EZMESHD_SOURCE_DIR ezmesh SOURCE_DIR)
+    target_include_directories(rcp-vendor-intf PRIVATE ${EZMESHD_SOURCE_DIR}/library)
+    target_link_libraries(rcp-vendor-intf PRIVATE ezmesh)
+
 
     target_include_directories(rcp-vendor-intf
         PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}
         PRIVATE
+	    ${OT_PUBLIC_INCLUDES}
             ${PROJECT_SOURCE_DIR}/include
             ${PROJECT_SOURCE_DIR}/src
             ${PROJECT_SOURCE_DIR}/src/core
             ${PROJECT_SOURCE_DIR}/src/include
             ${PROJECT_SOURCE_DIR}/src/posix/platform/include
     )
-
     target_link_libraries(openthread-posix PUBLIC rcp-vendor-intf)
 
     if (OT_POSIX_CONFIG_RCP_VENDOR_DEPS_PACKAGE)

@@ -213,10 +213,8 @@ private:
      * @param[in] aBuffer  A pointer to buffer containing data.
      * @param[in] aLength  The length (number of bytes) in the buffer.
      */
-    void Decode(const uint8_t *aBuffer, uint16_t aLength);
+    //void Decode(const uint8_t *aBuffer, uint16_t aLength);
 
-    static void HandleHdlcFrame(void *aContext, otError aError);
-    void        HandleHdlcFrame(otError aError);
 
     /**
      * This method generates and sends a reset response back to OT.
@@ -244,7 +242,6 @@ private:
     ezmesh_handle_t mHandle;
     ezmesh_ep_t     mEndpoint;
     uint32_t        mBaudRate;
-    Hdlc::Decoder   mHdlcDecoder;
     const Url::Url &mRadioUrl;
 
     static void HandleSecondaryReset(void);

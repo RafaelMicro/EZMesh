@@ -66,8 +66,7 @@ Ezmesh::Ezmesh(const Url::Url &aRadioUrl)
     , mReceiveFrameContext(nullptr)
     , mReceiveFrameBuffer(nullptr)
     , mSockFd(-1)
-    , mBaudRate(0)
-    , mHdlcDecoder()
+    , mBaudRate(500000)
     , mRadioUrl(aRadioUrl)
 {
     const char *value;
@@ -99,40 +98,10 @@ Ezmesh::Ezmesh(const Url::Url &aRadioUrl)
     otLogInfoPlat("mBaudRate = %d", mBaudRate);
 }
 
-void Ezmesh::HandleHdlcFrame(void *aContext, otError aError)
-{
-    static_cast<Ezmesh *>(aContext)->HandleHdlcFrame(aError);
-}
-
-void Ezmesh::HandleHdlcFrame(otError aError)
-{
-    VerifyOrExit((mReceiveFrameCallback != nullptr) && (mReceiveFrameBuffer != nullptr));
-
-    mInterfaceMetrics.mTransferredFrameCount++;
-
-    if (aError == OT_ERROR_NONE)
-    {
-        mInterfaceMetrics.mRxFrameCount++;
-        mInterfaceMetrics.mRxFrameByteCount += mReceiveFrameBuffer->GetLength();
-        mInterfaceMetrics.mTransferredValidFrameCount++;
-        mReceiveFrameCallback(mReceiveFrameContext);
-    }
-    else
-    {
-        mInterfaceMetrics.mTransferredGarbageFrameCount++;
-        mReceiveFrameBuffer->DiscardFrame();
-        LogWarn("Error decoding hdlc frame: %s", otThreadErrorToString(aError));
-    }
-
-exit:
-    return;
-}
-
 otError Ezmesh::Init(ReceiveFrameCallback aCallback, void *aCallbackContext, RxFrameBuffer &aFrameBuffer)
 {
     otError error = OT_ERROR_NONE;
 
-    mHdlcDecoder.Init(aFrameBuffer, HandleHdlcFrame, this);
     mReceiveFrameCallback = aCallback;
     mReceiveFrameContext  = aCallbackContext;
     mReceiveFrameBuffer   = &aFrameBuffer;
@@ -168,7 +137,6 @@ void Ezmesh::Read(uint64_t aTimeoutUs)
     bool     block = false;
     int      ret   = 0;
 
-    otLogInfoPlat("timeout = %ld", aTimeoutUs);
 
     if (aTimeoutUs > 0)
     {
@@ -229,22 +197,17 @@ void Ezmesh::Read(uint64_t aTimeoutUs)
     }
 }
 
-void Ezmesh::Decode(const uint8_t *aBuffer, uint16_t aLength)
-{
-    mHdlcDecoder.Decode(aBuffer, aLength);
-}
+//void Ezmesh::Decode(const uint8_t *aBuffer, uint16_t aLength)
+//{
+    //mHdlcDecoder.Decode(aBuffer, aLength);
+//}
 
 otError Ezmesh::SendFrame(const uint8_t *aFrame, uint16_t aLength)
 {
     otError                            error;
     Spinel::FrameBuffer<kMaxFrameSize> encoderBuffer;
-    // Hdlc::Encoder                      hdlcEncoder(encoderBuffer);
 
     CheckAndReInitCpc();
-
-    // SuccessOrExit(error = hdlcEncoder.BeginFrame());
-    // SuccessOrExit(error = hdlcEncoder.Encode(aFrame, aLength));
-    // SuccessOrExit(error = hdlcEncoder.EndFrame());
 
     error = Write(aFrame, aLength);
 

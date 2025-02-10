@@ -12,10 +12,12 @@ option(EZMESH_OTBR_NETWORK_MANAGER "include network manager service" 0)
 set(OTBR_SYSTEMD_UNIT_DIR "/lib/systemd/system" CACHE STRING "Destination path for otbr systemd service files")
 set(OTBR_INFRA_IF_NAME "eth0" CACHE STRING "The infrastructure interface name")
 set(OTBR_RADIO_URL "spinel+ezmesh://ezmeshd_0" CACHE STRING "URL")
-set(OTBR_MDNS "mDNSResponder" CACHE STRING "mDNS publisher provider")
+# set(OTBR_MDNS "mDNSResponder" CACHE STRING "mDNS publisher provider")
 set(OTBR_NAT64_SERVICE "openthread" CACHE STRING "nat64 service name")
 option(OTBR_REST "Enable Rest Server" ON)
 option(OT_BORDER_AGENT_ID "create and save border agent ID" 1)
+option(OT_TARGET_OPENWRT "enable openthread posix for OpenWRT" ON)
+
 
 # Packages installed in bootstrap when above options are enabled
 set(EZMESH_OTBR_RECS "rsyslog, libavahi-client3, avahi-daemon, libjsoncpp-dev")
@@ -26,6 +28,7 @@ set(DHCPV6_PD_RECS "dhcpcd5")
 set(REFERENCE_DEVICE_RECS "radvd, dnsutils")
 set(BACKBONE_ROUTER_RECS "libnetfilter-queue1")
 
+set(Protobuf_PROTOC_EXECUTABLE "/usr/local/bin/protoc")
 # Including options to enable and packages to recommend
 # based off of selected options
 if(EZMESH_OTBR_NAT64)
@@ -59,9 +62,7 @@ endif(EZMESH_OTBR_REFERENCE_DEVICE)
 if(EZMESH_OTBR_BACKBONE_ROUTER)
     string(APPEND EZMESH_OTBR_RECS ", ${BACKBONE_ROUTER_RECS}")
     set(OTBR_BACKBONE_ROUTER ON CACHE BOOL "enable backbone router features")
-    if(EZMESH_OTBR_REFERENCE_DEVICE)
-        set(OTBR_DUA_ROUTING ON CACHE BOOL "enable backbone router DUA routing")
-    endif(EZMESH_OTBR_REFERENCE_DEVICE)
+    set(OTBR_DUA_ROUTING ON CACHE BOOL "enable backbone router DUA routing")
 endif(EZMESH_OTBR_BACKBONE_ROUTER)
 
 if(EZMESH_OTBR_BORDER_ROUTING)
@@ -69,9 +70,9 @@ if(EZMESH_OTBR_BORDER_ROUTING)
 endif(EZMESH_OTBR_BORDER_ROUTING)
 
 # Setting additional default options
-option(OTBR_DBUS "enable DBUS support" ON)
-option(OTBR_DNSSD_DISCOVERY_PROXY "enable dns-sd discovery proxy support" ON)
-option(OTBR_SRP_ADVERTISING_PROXY "enable advertising proxy" ON)
+set(OTBR_DBUS "enable DBUS support" ON)
+set(OTBR_DNSSD_DISCOVERY_PROXY "enable dns-sd discovery proxy support" ON)
+set(OTBR_SRP_ADVERTISING_PROXY "enable advertising proxy" ON)
 
 # Adding selected packages to debian recommends control field
 set(CPACK_DEBIAN_UIC-OTBR_PACKAGE_RECOMMENDS ${EZMESH_OTBR_RECS} CACHE STRING "Package recommendations for ez-otbr: ${EZMESH_OTBR_RECS}" FORCE)

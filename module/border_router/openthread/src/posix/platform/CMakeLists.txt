@@ -132,7 +132,6 @@ add_library(openthread-posix
     entropy.cpp
     firewall.cpp
     hdlc_interface.cpp
-    ezmesh_interface.cpp
     infra_if.cpp
     logging.cpp
     mainloop.cpp
@@ -186,7 +185,6 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT OT_TARGET_OPENWRT)
     )
     target_link_libraries(openthread-posix PRIVATE anl)
 endif()
-
 target_compile_definitions(openthread-posix
     PUBLIC
         ${OT_PUBLIC_DEFINES}
@@ -201,10 +199,11 @@ target_compile_options(openthread-posix PRIVATE
 )
 
 
-get_target_property(EZMESHD_SOURCE_DIR ezmesh SOURCE_DIR)
-target_include_directories(openthread-posix PRIVATE ${EZMESHD_SOURCE_DIR}/lib)
-# target_sources(openthread-posix PRIVATE ezmesh_interface.cpp)
-target_link_libraries(openthread-posix PRIVATE ezmesh)
+#get_target_property(EZMESHD_SOURCE_DIR ezmesh SOURCE_DIR)
+#target_include_directories(openthread-posix PRIVATE ${EZMESHD_SOURCE_DIR}/lib)
+#target_include_directories(openthread-posix PRIVATE ${EZMESHD_SOURCE_DIR}/library)
+#target_sources(openthread-posix PRIVATE ezmesh_interface.cpp)
+#target_link_libraries(openthread-posix PRIVATE ezmesh)
 
 
 target_include_directories(openthread-posix PRIVATE
