@@ -12,4 +12,4 @@ if(OTBR_OPENWRT)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ezmesh_ble.init
         DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/etc/init.d
         RENAME ezmesh_ble)
-endif(OTBR_OPENWRT=ON)
+endif()

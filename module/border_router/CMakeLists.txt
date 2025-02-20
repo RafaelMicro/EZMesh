@@ -24,7 +24,7 @@ file(COPY ${POSIX_CONFIG_HEADERS} DESTINATION ${openthread_SOURCE_DIR}/src/posix
 file(COPY ${POSIX_CONFIG_HEADERS} DESTINATION ${ot-br-posix_SOURCE_DIR}/third_party/openthread/repo/src/posix/platform)
 
 # Compilation settings defined
-set(OT_CONFIG openthread-core-rafael-posix-config.h CACHE STRING "Project-specific openthread config file")
+set(OT_PROJECT_CONFIG openthread-core-rafael-posix-config.h CACHE STRING "Project-specific openthread config file")
 # set(OT_MULTIPAN_RCP ON CACHE BOOL "enable multi-PAN RCP")
 # set(OT_POSIX_CONFIG_RCP_BUS "EZMESH" CACHE STRING "RCP bus type")
 set(OT_DIAGNOSTIC ON CACHE BOOL "enable diagnostic support")
