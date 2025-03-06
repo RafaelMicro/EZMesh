@@ -39,6 +39,7 @@
  * @def OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME
  *
  * Define socket basename used by POSIX app daemon.
+ *
  */
 #ifndef OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME
 #ifdef __linux__
@@ -52,6 +53,7 @@
  * @def OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
  *
  * Define to 1 to enable POSIX daemon.
+ *
  */
 #ifndef OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE
 #define OPENTHREAD_POSIX_CONFIG_DAEMON_ENABLE 0
@@ -61,6 +63,7 @@
  * @def OPENTHREAD_POSIX_CONFIG_DAEMON_CLI_ENABLE
  *
  * Define to 1 to enable CLI for the posix daemon.
+ *
  */
 #ifndef OPENTHREAD_POSIX_CONFIG_DAEMON_CLI_ENABLE
 #define OPENTHREAD_POSIX_CONFIG_DAEMON_CLI_ENABLE 1
