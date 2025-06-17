@@ -693,7 +693,6 @@ static void handle_ep_send(int fd_data_socket, int socket_fd, uint8_t ep) {
   item->fd_data_socket = fd_data_socket;
   item->socket_fd = socket_fd;
   list_push(&ep_ctx[ep].ctl_socket_data, &item->node);
-  HAL_MEM_FREE(&item);
 }
 
 static void handle_get_hw_state(sys_cmd_handle_t *handle, property_id_t id, void *p_data,
