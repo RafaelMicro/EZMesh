@@ -17,6 +17,8 @@
 #define EZMESH_RESET_SLEEP_NS 10000L
 #define THREAD_SLEEP_NS 1000000L
 #define EZMESH_TRANSMIT_WINDOW 1
+#define ZB_PARAMETERS_START_ADDR 0xF4000
+#define ZB_PARAMETERS_SIZE       0x8000
 
 static void a_page_read(void *p_data);
 static void a_finish(void *p_data);
@@ -143,7 +145,7 @@ static char ezmesh_instance[INST_NAME_LEN];
 
 static int upg_complete = -1;
 
-static uint32_t start_address = 0xE0000;
+static uint32_t start_address = ZB_PARAMETERS_START_ADDR;
 
 // end the receiving loop if signal is received.
 static volatile bool run = true;
@@ -203,7 +205,7 @@ static void a_write(void *p_data)
 
     if (fp)
     {
-        fseek(fp, start_address - 0xE0000, SEEK_SET);
+        fseek(fp, start_address - ZB_PARAMETERS_START_ADDR, SEEK_SET);
 
         fread(&fw_wr_cmd[12], 0x100, 1, fp);
 
@@ -231,7 +233,7 @@ static void a_write_start(void *p_data)
         0xFF, 0xFC, 0xFC, 0xFF, 
         0x0B, 0x00, 0x00, 0x00,
         0xE0, 0x00, 0x00, 0x00, 
-        0x00, 0x00, 0x0E, 0x00,
+        0x00, 0x00, 0xF4, 0x00,
         0x00, 0x80, 0x00, 0x00,
         0x00, 0x80, 0x00, 0x00,
         0x00, 0x80, 0x00, 0x00,
@@ -256,7 +258,7 @@ static void a_page_read(void *p_data)
         0xFF, 0xFC, 0xFC, 0xFF, 
         0x0B, 0x02, 0x00, 0x00,
         0xE0, 0x00, 0x00, 0x00, 
-        0x00, 0x00, 0x0E, 0x00,0x08 };
+        0x00, 0x00, 0xF4, 0x00,0x08 };
 
     
 
@@ -484,7 +486,7 @@ void *rx_handler(void *ptr)
             {
                 start_address += 0x100;
 
-                if(start_address >= 0xE8000)
+                if(start_address >= ZB_PARAMETERS_START_ADDR + ZB_PARAMETERS_SIZE)
                 {
                     fsm_event_post(&flashctl_fsm, E_READ_FINISH, NULL);
                 }
@@ -500,7 +502,7 @@ void *rx_handler(void *ptr)
                 fwrite(pt_pd->parameter, 0x100, 1, fp);
 
                 start_address += 0x100;
-                if(start_address >= 0xE8000)
+                if(start_address >= ZB_PARAMETERS_START_ADDR + ZB_PARAMETERS_SIZE)
                 {
                     fsm_event_post(&flashctl_fsm, E_READ_FINISH, NULL);
                 }
