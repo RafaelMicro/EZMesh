@@ -1,0 +1,178 @@
+// vendor/rafael/ezmesh/Android.bp
+
+cc_library_headers {
+    name: "libezmesh_headers",
+    vendor: true,
+    // ADDED: Allow this header library to be used by the Tethering APEX
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.tethering",
+    ],
+    // ADDED: Match the requirement of the Tethering APEX
+    min_sdk_version: "30",
+    export_include_dirs: [
+        "module/controller/library",
+        "module/controller",
+    ],
+}
+
+// 1. Define Common Compiler Flags
+cc_defaults {
+    name: "ezmesh_defaults",
+    vendor: true,
+
+    // RECOMMENDED: Add these here too, as libezmesh.so will need them 
+    // when ot-daemon tries to link against it at the final stage.
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.tethering",
+    ],
+    cflags: [
+        "-Wall",
+        "-Wno-unused-parameter",
+        "-D_GNU_SOURCE",
+        
+        // Configuration mapped from CMake
+        "-DEZMESHD_CONFIG_FILE_PATH=\"/vendor/etc/ez_config.ini\"",
+        "-DEZMESHD_REBOOT_TIME_MS=2000",
+        "-DEZMESH_SOCKET_DIR=\"/dev/socket/ezmesh\"",
+        "-DDEFAULT_INSTANCE_NAME=\"ezmeshd_0\"",
+        "-DEZMESHD_POTOCOL=\"3\"",
+        "-DEZMESH_PROTOCOL_VERSION=\"3\"",
+        
+        // Git definitions required by config.c (Added back to cflags)
+        "-DGIT_REFSPEC=\"refs/heads/cert-R6X-validate\"",
+        "-DGIT_SHA1=\"86e5b781e771f36fa581679d948c32b8f35fd450\"",
+    ],
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libutils",
+    ],
+}
+
+// 2. Auto-generate version.h
+// We use sed to inject the values you provided from OpenWRT
+genrule {
+    name: "ezmesh_version_h",
+    srcs: ["module/controller/utility/version.h.in"],
+    out: ["version.h"],
+    // Matches the values found in your OpenWRT build
+    cmd: "sed -e 's/@PROJECT_VER@/2.0.0/g' " +
+         "-e 's/@PROJECT_VERSION@/2.0.0/g' " +
+         "-e 's/@PROJECT_VERSION_MAJOR@/2/g' " +
+         "-e 's/@PROJECT_VERSION_MINOR@/0/g' " +
+         "-e 's/@PROJECT_VERSION_PATCH@/0/g' " +
+         "-e 's/@PROJECT_VERSION_TWEAK@//g' " +
+         "-e 's/@EZMESH_LIBRARY_API_VERSION@/1/g' " +
+         "-e 's/@EZMESH_PROTOCOL_VERSION@/3/g' " +
+         "-e 's/@SOURCES_HASH@/android_static_build_hash/g' " +
+         "-e 's/@PROJECT_NAME@/EZMESH/g' " +
+         "-e 's/@GIT_SHA1@/android-build/g' " + 
+         "-e 's/@GIT_REFSPEC@/none/g' " +
+         "$(in) > $(out)",
+}
+
+// 3. The Core Library: libezmesh
+cc_library_static { // Changed from cc_library_shared
+    name: "libezmesh_static",
+    defaults: ["ezmesh_defaults"],
+    vendor: true,
+    
+    // Keep these for APEX compatibility
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.tethering",
+    ],
+    min_sdk_version: "30",
+
+    srcs: [
+        "module/controller/host/hal_sleep.c",
+        "module/controller/library/libezmesh.c",
+        "module/controller/utility/utility.c",
+    ],
+    
+    export_include_dirs: [
+        "module/controller/library",
+        "module/controller",
+    ],
+    
+    generated_headers: ["ezmesh_version_h"],
+}
+
+// 4. The ezmeshd daemon
+cc_binary {
+    name: "ezmeshd",
+    defaults: ["ezmesh_defaults"],
+    init_rc: ["ezmeshd.rc"],
+
+    srcs: [
+        "module/controller/main.c",
+        "module/controller/daemon/hdlc/core.c",
+        "module/controller/daemon/primary/primary.c",
+        "module/controller/daemon/controller.c",
+        "module/controller/host/hal_epoll.c",
+        "module/controller/host/hal_kill.c",
+        "module/controller/host/hal_sleep.c",
+        "module/controller/host/hal_uart.c",
+        "module/controller/host/hal_memory.c",
+        "module/controller/utility/config.c",
+        "module/controller/utility/list.c",
+        "module/controller/utility/log.c",
+        "module/controller/utility/utility.c",
+    ],
+
+    // Ensure the binary is installed to /vendor/bin
+    vendor: true,
+
+    local_include_dirs: [
+        "module/controller",
+        "module/controller/library",
+        "module/controller/daemon", // Added
+        "module/controller/utility", // Added
+    ],
+    
+    generated_headers: ["ezmesh_version_h"],
+
+    static_libs: [
+        "libezmesh_static",
+    ],
+}
+
+// 5. The Bluetooth-to-PTY Bridge Daemon
+cc_binary {
+    name: "ezmesh-bluetoothd",
+    defaults: ["ezmesh_defaults"],
+    init_rc: ["ezmesh-bluetoothd.rc"],
+
+    srcs: [
+        "module/bluetooth/ezmesh-bluetooth.c",
+    ],
+
+    vendor: true,
+
+    local_include_dirs: [
+        "module/controller/library",
+        "module/controller",
+    ],
+
+    static_libs: [
+        "libezmesh_static",
+    ],
+
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libutils",
+    ],
+
+    generated_headers: ["ezmesh_version_h"],
+}
+
+// 6. Configuration File
+prebuilt_etc {
+    name: "ez_config.ini",
+    vendor: true,
+    src: "module/controller/ez_config.ini",
+    filename: "ez_config.ini",
+}
