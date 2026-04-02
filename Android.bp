@@ -35,7 +35,7 @@ cc_defaults {
         // Configuration mapped from CMake
         "-DEZMESHD_CONFIG_FILE_PATH=\"/vendor/etc/ez_config.ini\"",
         "-DEZMESHD_REBOOT_TIME_MS=2000",
-        "-DEZMESH_SOCKET_DIR=\"/dev/socket/ezmesh\"",
+        "-DEZMESH_SOCKET_DIR=\"/dev/shm/ezmesh\"",
         "-DDEFAULT_INSTANCE_NAME=\"ezmeshd_0\"",
         "-DEZMESHD_POTOCOL=\"3\"",
         "-DEZMESH_PROTOCOL_VERSION=\"3\"",
